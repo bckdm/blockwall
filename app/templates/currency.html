@@ -1,0 +1,96 @@
+{% extends '_layout.html' %}
+{% set active_page = 'assets' %}
+{% block title %}{{ coin.name }} ({{ coin.symbol }}){% endblock %}
+
+{% macro coin_icon(symbol) %}
+  {% set s = symbol|upper %}
+  <span class="bc-coin-icon bc-coin-icon--{{ s|lower }}">
+    {% if s == 'TRX' %}TRX{% elif s == 'ETH' %}Ξ{% elif s == 'BTC' %}₿{% elif s == 'USDC' %}${% elif s == 'USDT' %}T{% elif s == 'BNB' %}B{% elif s == 'XRP' %}X{% elif s == 'DOGE' %}Ð{% else %}{{ s[:2] }}{% endif %}
+  </span>
+{% endmacro %}
+
+{% block content %}
+
+<button class="bc-back" onclick="history.length > 1 ? history.back() : location.href='{{ url_for('wallet_assets') }}'">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M15 18l-6-6 6-6"/></svg>
+  Zurück
+</button>
+
+<div class="bc-coin-head" style="margin-top:14px;">
+  {{ coin_icon(coin.symbol) }}
+  <div>
+    <div class="bc-coin-head__name">{{ coin.name }}</div>
+    <div class="bc-coin-head__sub">{{ coin.symbol }}</div>
+  </div>
+</div>
+
+<div class="bc-tabs--underlined">
+  <button class="bc-tab is-active">Überblick</button>
+  <button class="bc-tab">Transaktionen</button>
+  <button class="bc-tab">Info</button>
+</div>
+
+<div class="bc-card bc-chart-card">
+  <div class="bc-chart-meta">
+    <div class="bc-chart-meta__label">Aktueller Preis</div>
+    <div class="bc-chart-meta__price">€{{ '%0.4f'|format(coin.balance_eur / coin.balance_qty if coin.balance_qty else 0.2829) }}</div>
+    <div class="bc-chart-meta__delta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      €0.0023  (0.82%)
+      <span style="color:var(--bc-text-muted);font-weight:400;margin-left:6px;">Letzte 24h</span>
+    </div>
+  </div>
+  <svg class="bc-chart" viewBox="0 0 800 260" preserveAspectRatio="none" id="bc-chart-svg"></svg>
+  <script>
+    (function () {
+      // simple deterministic pseudo-chart that resembles a 24h line
+      var svg = document.getElementById('bc-chart-svg');
+      if (!svg) return;
+      var W = 800, H = 260, padY = 24;
+      var pts = [165,170,180,172,168,175,185,195,188,178,170,162,158,168,180,178,170,160,152,148,142,138,130,135,140,150,158,165,175,180,172,165,160,155,148,140,135,128,118,108,102,98,110,128,148,165,180,170,158,148,140,132,128,122,118,124,135,148,162,175,180,170,158,150];
+      var max = Math.max.apply(null, pts), min = Math.min.apply(null, pts);
+      function x(i){ return i*(W-30)/(pts.length-1) + 15; }
+      function y(v){ return H-padY - ((v-min)/(max-min))*(H-padY*2); }
+      var d = pts.map(function(v,i){ return (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
+      var ns = 'http://www.w3.org/2000/svg';
+      var path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#0e9f6e');
+      path.setAttribute('stroke-width', '2.5');
+      path.setAttribute('stroke-linejoin', 'round');
+      path.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(path);
+      // x-axis labels
+      var labels = ['11:00 PM','03:00 AM','07:00 AM','11:00 AM','03:00 PM'];
+      var step = Math.floor(pts.length/(labels.length-1));
+      labels.forEach(function(lbl, idx) {
+        var t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', x(idx*step));
+        t.setAttribute('y', H-4);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('fill', '#9aa0b4');
+        t.setAttribute('font-size', '11');
+        t.setAttribute('font-family', 'Inter, sans-serif');
+        t.textContent = lbl;
+        svg.appendChild(t);
+      });
+    })();
+  </script>
+</div>
+
+<div class="bc-balance-actions">
+  <div class="bc-balance">
+    <div class="bc-balance__label">Ihr Gesamtbestand {{ coin.symbol }}</div>
+    <div class="bc-balance__amount">€{{ '%0.2f'|format(coin.balance_eur) }}</div>
+    <div style="color:var(--bc-text-muted);font-size:12px;margin-top:4px;">{{ '%0.4f'|format(coin.balance_qty) }} {{ coin.qty_unit }}</div>
+  </div>
+  <div class="bc-actions">
+    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><span class="bc-action__label">Verkaufen</span></button>
+    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span><span class="bc-action__label">Swap</span></button>
+    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6M5 20h14"/></svg></span><span class="bc-action__label">Einzahlung</span></button>
+    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V8M6 14l6 6 6-6"/></svg></span><span class="bc-action__label">Senden</span></button>
+  </div>
+</div>
+
+{% endblock %}

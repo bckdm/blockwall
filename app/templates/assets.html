@@ -1,0 +1,63 @@
+{% extends '_layout.html' %}
+{% set active_page = 'assets' %}
+{% block title %}Vermögenswerte{% endblock %}
+
+{% macro coin_icon(symbol) %}
+  {% set s = symbol|upper %}
+  <span class="bc-coin-icon bc-coin-icon--{{ s|lower }}">
+    {% if s == 'TRX' %}TRX{% elif s == 'ETH' %}Ξ{% elif s == 'BTC' %}₿{% elif s == 'USDC' %}${% elif s == 'USDT' %}T{% elif s == 'BNB' %}B{% elif s == 'XRP' %}X{% elif s == 'DOGE' %}Ð{% else %}{{ s[:2] }}{% endif %}
+  </span>
+{% endmacro %}
+
+{% block content %}
+
+<div class="bc-section-head" style="margin-bottom:14px;">
+  <div class="bc-tabs">
+    <button class="bc-tab is-active">Tokens</button>
+    <button class="bc-tab">Collectibles</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:18px;">
+    <label class="bc-check">
+      <input type="checkbox"> Kleine Guthaben ausblenden
+    </label>
+    <div class="bc-select">
+      <span>Alle Netzwerke</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </div>
+</div>
+
+<div class="bc-list">
+  {% for w in wallets %}
+  <a class="bc-list__row" href="{{ url_for('wallet_currency', sym=w.symbol) }}">
+    {{ coin_icon(w.symbol) }}
+    <div class="bc-row-main">
+      <div class="bc-row-main__name">{{ w.name }}</div>
+    </div>
+    <div class="bc-row-aside">
+      <div class="bc-row-aside__amount">€{{ '%0.2f'|format(w.balance_eur) }}</div>
+      <div class="bc-row-aside__qty">{{ '%0.4f'|format(w.balance_qty) }} {{ w.qty_unit }}</div>
+    </div>
+  </a>
+  {% else %}
+  <div class="bc-list__row muted">Keine Token gefunden.</div>
+  {% endfor %}
+</div>
+
+<div class="bc-help">
+  <div class="bc-help__title">Brauchen Sie Hilfe?</div>
+  <div class="bc-help__list">
+    <a class="bc-help__item" href="#">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.5 8.5 0 1 1-3.6-6.9L21 3v6h-6"/></svg></span>
+      <span>Support kontaktieren</span>
+      <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+    </a>
+    <a class="bc-help__item" href="#">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/></svg></span>
+      <span>Support-Center anzeigen</span>
+      <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+    </a>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,15 @@
+[Unit]
+Description=Blockwall wallet (gunicorn)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/blockwall
+Environment=ADMIN_USER=admin
+Environment=ADMIN_PASS=ChangeMe-Now-2026
+Environment=SECRET_KEY=d8c382a1ae9c51ceca2534db68af21b6681040e968bb13c566654c1a6a2f0aba
+ExecStart=/root/blockwall/venv/bin/gunicorn -w 2 -b 127.0.0.1:5001 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: blockwall
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASS
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: 5001
+      - key: RENDER
+        value: "true"
+    disk:
+      name: blockwall-data
+      mountPath: /app/data
+      sizeGB: 1

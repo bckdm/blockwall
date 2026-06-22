@@ -1,0 +1,77 @@
+{% extends '_layout.html' %}
+{% set active_page = 'activity' %}
+{% block title %}Aktivität{% endblock %}
+
+{% block content %}
+
+<div class="bc-filter-row">
+  <div class="bc-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input placeholder="Search Coins">
+  </div>
+  <div class="bc-select">
+    <span>Alle</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+  </div>
+  <div class="bc-select">
+    <span>Alle</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+  </div>
+</div>
+
+{% set by_month = {} %}
+{% for r in activity %}
+  {% set m = r.ts[:7] %}
+  {% set _ = by_month.update({ m: by_month.get(m, []) + [r] }) %}
+{% endfor %}
+
+{% for month, items in by_month.items() %}
+  {% set month_label = {
+       '2026-06':'June','2026-05':'May','2026-04':'April',
+       '2026-03':'March','2026-02':'February','2026-01':'January'
+     }.get(month, month) %}
+  <div style="font-weight:600;color:var(--bc-text);margin:18px 4px 8px;">{{ month_label }}</div>
+  <div class="bc-list">
+    {% for r in items %}
+    <div class="bc-list__row">
+      <span class="bc-tx-icon">
+        {% if r.kind == 'received' %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6"/></svg>
+        {% else %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V8M6 14l6 6 6-6"/></svg>
+        {% endif %}
+      </span>
+      <div class="bc-row-main">
+        <div class="bc-row-main__name">{{ r.label }}</div>
+        <div class="bc-row-main__sub">{{ r.ts[:10] }}</div>
+      </div>
+      <div class="bc-row-aside">
+        <div class="bc-row-aside__amount">€{{ '%0.2f'|format(r.amount_eur) }}</div>
+        <div class="bc-row-aside__qty">{{ '%0.4f'|format(r.amount_qty) }} {{ r.qty_unit }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="bc-list">
+    <div class="bc-list__row muted">Keine Aktivität.</div>
+  </div>
+{% endfor %}
+
+<div class="bc-help">
+  <div class="bc-help__title">Brauchen Sie Hilfe?</div>
+  <div class="bc-help__list">
+    <a class="bc-help__item" href="#">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.5 8.5 0 1 1-3.6-6.9L21 3v6h-6"/></svg></span>
+      <span>Support kontaktieren</span>
+      <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+    </a>
+    <a class="bc-help__item" href="#">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/></svg></span>
+      <span>Support-Center anzeigen</span>
+      <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+    </a>
+  </div>
+</div>
+
+{% endblock %}

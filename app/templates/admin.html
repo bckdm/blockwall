@@ -1,0 +1,74 @@
+{% extends '_base.html' %}
+{% block title %}Admin{% endblock %}
+{% block body %}
+<div class="admin-shell">
+  <aside class="admin-side">
+    <h1>
+      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="">
+      Admin
+    </h1>
+    <nav class="admin-nav">
+      <a href="{{ url_for('admin_dashboard') }}" class="active">Benutzer</a>
+      <a href="{{ url_for('admin_sample') }}">Beispiel-xlsx</a>
+      <a href="{{ url_for('admin_logout') }}">Abmelden</a>
+    </nav>
+  </aside>
+  <main class="admin-main">
+    <h2>Benutzer-Verwaltung</h2>
+    <div class="sub">Laden Sie eine Excel-Datei hoch, um Benutzer hinzuzufügen oder zu aktualisieren.</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="admin-flash admin-flash--{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="admin-stat">
+      <div class="admin-stat__label">Aktive Benutzer</div>
+      <div class="admin-stat__val">{{ count }}</div>
+    </div>
+
+    <div class="admin-card">
+      <h3>Excel-Datei hochladen</h3>
+      <p>Spalten: <code>email</code>, <code>password</code>, <code>name</code> (optional).
+         Vorhandene E-Mails werden aktualisiert, neue werden hinzugefügt.
+         <a href="{{ url_for('admin_sample') }}">Beispiel-Datei herunterladen</a>.
+      </p>
+      <form class="admin-drop" method="post" action="{{ url_for('admin_upload') }}" enctype="multipart/form-data">
+        <div style="font-size:28px;color:var(--bc-text-muted);">📄</div>
+        <div><strong>Excel-Datei hier ablegen</strong> oder auswählen</div>
+        <input type="file" name="file" accept=".xlsx" required>
+        <button class="admin-btn" type="submit">Hochladen &amp; Importieren</button>
+      </form>
+    </div>
+
+    <div class="admin-card">
+      <h3>Benutzerliste ({{ count }})</h3>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>E-Mail</th>
+            <th>Name</th>
+            <th>Erstellt</th>
+            <th>Letzte Anmeldung</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.email }}</td>
+            <td>{{ u.name or '—' }}</td>
+            <td>{{ (u.created_at or '')[:10] }}</td>
+            <td>{{ (u.last_login or '')[:10] }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="muted center">Noch keine Benutzer.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+{% endblock %}

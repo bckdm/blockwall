@@ -1,0 +1,26 @@
+{% extends '_base.html' %}
+{% block title %}Admin Login{% endblock %}
+{% block body %}
+<div class="bc-login">
+  <div class="bc-login__center">
+    <div class="bc-login__logo">
+      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="Blockchain">
+      Admin
+    </div>
+    <div class="bc-login__card">
+      <div class="bc-login__head">
+        <div class="bc-login__title">Admin Login</div>
+      </div>
+      <div class="bc-login__sub">User-Verwaltung</div>
+      {% if error %}<div class="bc-login__error">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ url_for('admin_login') }}">
+        <div class="bc-login__label">Benutzername</div>
+        <input class="bc-login__input" type="text" name="username" autofocus required>
+        <div class="bc-login__label" style="margin-top:14px;">Passwort</div>
+        <input class="bc-login__input" type="password" name="password" required>
+        <button class="bc-login__btn" type="submit">Anmelden</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
