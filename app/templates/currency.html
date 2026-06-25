@@ -25,7 +25,11 @@
 </div>
 
 <div class="bc-tabs--underlined">
-  <button class="bc-tab is-active">Überblick</button>
+  <button class="bc-tab is-active">Kaufen</button>
+  <button class="bc-tab">Verkaufen</button>
+  <button class="bc-tab">Tausch</button>
+  <button class="bc-tab">Senden</button>
+  <button class="bc-tab">Überblick</button>
   <button class="bc-tab">Transaktionen</button>
   <button class="bc-tab">Info</button>
 </div>
@@ -33,7 +37,7 @@
 <div class="bc-card bc-chart-card">
   <div class="bc-chart-meta">
     <div class="bc-chart-meta__label">Aktueller Preis</div>
-    <div class="bc-chart-meta__price">€{{ '%0.4f'|format(coin.balance_eur / coin.balance_qty if coin.balance_qty else 0.2829) }}</div>
+    <div class="bc-chart-meta__price bc-amount" data-bc-balance="€{{ '%0.4f'|format(coin.balance_eur / coin.balance_qty if coin.balance_qty else 0.2829) }}">€{{ '%0.4f'|format(coin.balance_eur / coin.balance_qty if coin.balance_qty else 0.2829) }}</div>
     <div class="bc-chart-meta__delta">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
       €0.0023  (0.82%)
@@ -82,13 +86,13 @@
 <div class="bc-balance-actions">
   <div class="bc-balance">
     <div class="bc-balance__label">Ihr Gesamtbestand {{ coin.symbol }}</div>
-    <div class="bc-balance__amount">€{{ '%0.2f'|format(coin.balance_eur) }}</div>
+    <div class="bc-balance__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(coin.balance_eur) }}" data-bc-wallet-symbol="{{ coin.symbol }}">€{{ '%0.2f'|format(coin.balance_eur) }}</div>
     <div style="color:var(--bc-text-muted);font-size:12px;margin-top:4px;">{{ '%0.4f'|format(coin.balance_qty) }} {{ coin.qty_unit }}</div>
   </div>
   <div class="bc-actions">
+    <button class="bc-action" data-bc-open-modal="einzahlung"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6M5 20h14"/></svg></span><span class="bc-action__label">Einzahlung</span></button>
     <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><span class="bc-action__label">Verkaufen</span></button>
-    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span><span class="bc-action__label">Swap</span></button>
-    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6M5 20h14"/></svg></span><span class="bc-action__label">Einzahlung</span></button>
+    <button class="bc-action" onclick="location.href='{{ url_for('wallet_dex') }}'"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span><span class="bc-action__label">Tausch</span></button>
     <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V8M6 14l6 6 6-6"/></svg></span><span class="bc-action__label">Senden</span></button>
   </div>
 </div>

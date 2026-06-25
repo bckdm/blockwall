@@ -12,7 +12,6 @@
     <div class="bc-header__left">
       <a href="{{ url_for('wallet_home') }}" class="bc-header__brand">
         <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="Blockchain">
-        <span>Blockchain</span>
       </a>
     </div>
     <div class="bc-header__title">Wallet</div>
@@ -72,6 +71,15 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
           Vermögenswerte
         </a>
+        <a class="bc-side__link {% if active=='dex' %}active{% endif %}" href="{{ url_for('wallet_dex') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>
+          DEX
+        </a>
+        <a class="bc-side__link {% if active=='stocks' %}active{% endif %}" href="{{ url_for('wallet_stocks') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v6h-6"/></svg>
+          Aktien
+          <span class="bc-badge">Neu</span>
+        </a>
         <a class="bc-side__link {% if active=='activity' %}active{% endif %}" href="{{ url_for('wallet_activity') }}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>
           Aktivität
@@ -81,6 +89,51 @@
     <main class="bc-main">
       {% block content %}{% endblock %}
     </main>
+  </div>
+
+  <div class="bc-loader" id="bc-loader" aria-hidden="true">
+    <div class="bc-loader__ring"></div>
+    <div class="bc-loader__text">Loading…</div>
+  </div>
+
+  <div class="bc-modal" id="bc-einzahlung-modal" aria-hidden="true">
+    <div class="bc-modal__backdrop" data-bc-modal-close="1"></div>
+    <div class="bc-modal__panel" role="dialog" aria-modal="true" aria-labelledby="bc-einzahlung-title">
+      <header class="bc-modal__head">
+        <h2 class="bc-modal__title" id="bc-einzahlung-title">Einzahlung</h2>
+        <button class="bc-icon-btn" data-bc-modal-close="1" aria-label="Schließen" title="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+        </button>
+      </header>
+      <div class="bc-modal__search-wrap">
+        <svg class="bc-modal__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input class="bc-modal__search" id="bc-coin-search" type="search" placeholder="Coins suchen" autocomplete="off">
+      </div>
+      <div class="bc-modal__list" id="bc-coin-list">
+        {% for c in COINS %}
+          {% set w = (wallets|selectattr('symbol','equalto',c.symbol)|list|first) %}
+          {% set balance_eur = (w.balance_eur if w else 0) or 0 %}
+          {% set balance_qty = (w.balance_qty if w else 0) or 0 %}
+          <button class="bc-modal__coin" type="button"
+                  data-bc-coin="{{ c.symbol }}"
+                  data-bc-coin-name="{{ c.name }}"
+                  data-bc-coin-color="{{ c.color }}"
+                  data-bc-coin-balance="{{ '%.2f'|format(balance_eur) }}"
+                  data-bc-coin-qty="{{ '%.4f'|format(balance_qty) }}">
+            <span class="bc-coin-icon bc-coin-icon--{{ c.symbol|lower }}" style="background:{{ c.color }}">{{ c.symbol[0] }}</span>
+            <span class="bc-modal__coin-meta">
+              <span class="bc-modal__coin-name">{{ c.name }}</span>
+              <span class="bc-modal__coin-sub">(DeFi Wallet)</span>
+            </span>
+            <span class="bc-modal__coin-balance">
+              <span class="bc-amount" data-bc-balance="€{{ '%.2f'|format(balance_eur) }}">€{{ '%.2f'|format(balance_eur) }}</span>
+              <span class="bc-modal__coin-balance-qty">({{ '%.0f'|format(balance_qty) }} {{ c.symbol }})</span>
+            </span>
+            <svg class="bc-modal__coin-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 
   <script>
@@ -97,10 +150,9 @@
           if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
         });
       }
-      // refresh button
-      var r = document.getElementById('bc-refresh');
-      if (r) r.addEventListener('click', function () { location.reload(); });
     })();
   </script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

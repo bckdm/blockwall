@@ -1,0 +1,103 @@
+{% extends "_layout.html" %}
+{% set active_page = 'stocks' %}
+{% block title %}Aktien{% endblock %}
+
+{% block content %}
+<section class="bc-stocks">
+  <header class="bc-stocks__head">
+    <div class="bc-stocks__tabs" role="tablist">
+      <button class="bc-stocks__tab active" type="button" role="tab" aria-selected="true" data-bc-stocks-tab="discover">Entdecken</button>
+      <button class="bc-stocks__tab" type="button" role="tab" aria-selected="false" data-bc-stocks-tab="mine">Meine Aktien</button>
+    </div>
+    <div class="bc-stocks__head-right">
+      <button class="bc-icon-btn bc-stocks__info" type="button" title="Was sind tokenisierte Aktien?" aria-label="Info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      </button>
+      <div class="bc-stocks__callout">
+        <span class="bc-stocks__callout-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 22v-6M2 12h6M22 12h-6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4"/></svg>
+        </span>
+        <div>
+          <div class="bc-stocks__callout-title">Aktien sind jetzt verfügbar</div>
+          <div class="bc-stocks__callout-sub">Handel tokenisierte Aktien 24/7.</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="bc-stocks__bar">
+    <div class="bc-stocks__search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="bc-stocks__search-icon"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input class="bc-stocks__search" id="bc-stocks-search" type="search" placeholder="Aktien suchen" autocomplete="off">
+    </div>
+    <button class="bc-stocks__filter" type="button" title="Filter" aria-label="Filter">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+      Filter
+    </button>
+  </div>
+
+  <div class="bc-stocks-table">
+    <div class="bc-stocks-table__head">
+      <div class="bc-stocks-table__col bc-stocks-table__col--name">Name <span class="bc-stocks-table__sort">▲</span></div>
+      <div class="bc-stocks-table__col bc-stocks-table__col--price">Preis</div>
+      <div class="bc-stocks-table__col bc-stocks-table__col--change">24h</div>
+      <div class="bc-stocks-table__col bc-stocks-table__col--cap">Marktkapitalisierung</div>
+      <div class="bc-stocks-table__col bc-stocks-table__col--star"></div>
+    </div>
+    <div class="bc-stocks-table__body" id="bc-stocks-body">
+      {% for s in stocks %}
+      <a class="bc-stocks-row" href="#" data-bc-stock-row data-name="{{ s.name }}" data-ticker="{{ s.ticker }}">
+        <div class="bc-stocks-row__name">
+          <span class="bc-stocks-row__logo" style="background: #1a1a2e;">{{ s.ticker[0] }}</span>
+          <span class="bc-stocks-row__text">
+            <span class="bc-stocks-row__title">{{ s.name }}</span>
+            <span class="bc-stocks-row__ticker">{{ s.ticker }}</span>
+          </span>
+        </div>
+        <div class="bc-stocks-row__price bc-amount" data-bc-balance="€{{ '%.2f'|format(s.price_eur) }}">
+          €{{ '%.2f'|format(s.price_eur) }}
+        </div>
+        <div class="bc-stocks-row__change {% if s.change_24h_pct >= 0 %}up{% else %}down{% endif %}">
+          {% if s.change_24h_pct >= 0 %}↑{% else %}↓{% endif %}
+          {{ '%+.2f'|format(s.change_24h_pct) }}%
+        </div>
+        <div class="bc-stocks-row__cap">€{{ s.market_cap_eur }}</div>
+        <div class="bc-stocks-row__star">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var search = document.getElementById("bc-stocks-search");
+    var body = document.getElementById("bc-stocks-body");
+    if (search && body) {
+      search.addEventListener("input", function () {
+        var q = search.value.trim().toLowerCase();
+        body.querySelectorAll("[data-bc-stock-row]").forEach(function (row) {
+          var n = (row.dataset.name || "").toLowerCase();
+          var t = (row.dataset.ticker || "").toLowerCase();
+          row.style.display = (!q || n.indexOf(q) !== -1 || t.indexOf(q) !== -1) ? "" : "none";
+        });
+      });
+    }
+    // tab toggling — visual only
+    document.querySelectorAll("[data-bc-stocks-tab]").forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        document.querySelectorAll("[data-bc-stocks-tab]").forEach(function (t) {
+          t.classList.remove("active");
+          t.setAttribute("aria-selected", "false");
+        });
+        tab.classList.add("active");
+        tab.setAttribute("aria-selected", "true");
+      });
+    });
+  })();
+</script>
+{% endblock %}

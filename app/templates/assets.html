@@ -20,6 +20,9 @@
     <label class="bc-check">
       <input type="checkbox"> Kleine Guthaben ausblenden
     </label>
+    <button class="bc-action" type="button" data-bc-open-modal="einzahlung" style="min-width:auto;padding:8px 14px;border-radius:999px;background:var(--bc-link);color:#fff;">
+      <span class="bc-action__label" style="font-size:13px;">Einzahlung</span>
+    </button>
     <div class="bc-select">
       <span>Alle Netzwerke</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -35,8 +38,8 @@
       <div class="bc-row-main__name">{{ w.name }}</div>
     </div>
     <div class="bc-row-aside">
-      <div class="bc-row-aside__amount">€{{ '%0.2f'|format(w.balance_eur) }}</div>
-      <div class="bc-row-aside__qty">{{ '%0.4f'|format(w.balance_qty) }} {{ w.qty_unit }}</div>
+      <div class="bc-row-aside__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(w.balance_eur) }}" data-bc-wallet-symbol="{{ w.symbol }}">€{{ '%0.2f'|format(w.balance_eur) }}</div>
+      <div class="bc-row-aside__qty" data-bc-wallet-qty>{{ '%0.4f'|format(w.balance_qty) }} {{ w.qty_unit }}</div>
     </div>
   </a>
   {% else %}

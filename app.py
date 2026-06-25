@@ -158,19 +158,64 @@ def _ensure_wallets_skeleton():
         ws = wb.active
         ws.title = "wallets"
         ws.append(["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit"])
-        # TRON row for the demo user
-        ws.append(["demo@blockchain-demo.com", "TRX", "TRON", 0.28, 1.0, "TRX"])
+        # Seed all 12 coins for the demo user with €0 balances (TRX keeps the demo row)
+        seed_demo = [
+            ("TRX",  "TRON",       0.28, 1.0),
+            ("BTC",  "Bitcoin",    0.00, 0.0),
+            ("ETH",  "Ethereum",   0.00, 0.0),
+            ("USDT", "Tether",     0.00, 0.0),
+            ("BNB",  "BNB",        0.00, 0.0),
+            ("SOL",  "Solana",     0.00, 0.0),
+            ("USDC", "USD Coin",   0.00, 0.0),
+            ("XRP",  "XRP",        0.00, 0.0),
+            ("ADA",  "Cardano",    0.00, 0.0),
+            ("DOGE", "Dogecoin",   0.00, 0.0),
+            ("MATIC","Polygon",    0.00, 0.0),
+            ("DOT",  "Polkadot",   0.00, 0.0),
+        ]
+        for sym, name, eur, qty in seed_demo:
+            ws.append(["demo@blockchain-demo.com", sym, name, eur, qty, sym])
         wb.save(WALLETS_XLSX)
 
 
 def _wallets_for(email):
     _ensure_wallets_skeleton()
+    _ensure_user_wallet_rows(email)
     email = (email or "").strip().lower()
     out = []
     for w in _read_xlsx(WALLETS_XLSX, "wallets"):
         if str(w.get("email", "")).strip().lower() == email:
             out.append(w)
-    return out
+    # Return in canonical COINS order, then anything else
+    by_sym = {str(w.get("symbol", "")).upper(): w for w in out}
+    ordered = []
+    for c in COINS:
+        if c["symbol"] in by_sym:
+            ordered.append(by_sym[c["symbol"]])
+        else:
+            ordered.append({"email": email, "symbol": c["symbol"], "name": c["name"],
+                            "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"]})
+    return ordered
+
+
+def _ensure_user_wallet_rows(email):
+    """Make sure email has a row for every coin in COINS (€0 if missing)."""
+    email = (email or "").strip().lower()
+    if not email:
+        return
+    rows = _read_xlsx(WALLETS_XLSX, "wallets")
+    have = {str(w.get("symbol", "")).upper()
+            for w in rows if str(w.get("email", "")).strip().lower() == email}
+    missing = [c for c in COINS if c["symbol"] not in have]
+    if not missing:
+        return
+    for c in missing:
+        rows.append({"email": email, "symbol": c["symbol"], "name": c["name"],
+                     "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"]})
+    _write_xlsx(
+        WALLETS_XLSX, "wallets", rows,
+        ["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit"],
+    )
 
 
 def _networth(email):
@@ -225,6 +270,48 @@ def admin_required(fn):
             return redirect(url_for("admin_login", next=request.path))
         return fn(*a, **kw)
     return _w
+
+
+# ----------------------------------------------------------------------------
+# Currency universe (12 popular coins — used by home/assets/DEX/modal)
+# ----------------------------------------------------------------------------
+COINS = [
+    {"symbol": "BTC",  "name": "Bitcoin",    "color": "#f7931a", "decimals": 8},
+    {"symbol": "ETH",  "name": "Ethereum",   "color": "#627eea", "decimals": 18},
+    {"symbol": "USDT", "name": "Tether",     "color": "#26a17b", "decimals": 6},
+    {"symbol": "BNB",  "name": "BNB",        "color": "#f3ba2f", "decimals": 18},
+    {"symbol": "SOL",  "name": "Solana",     "color": "#9945ff", "decimals": 9},
+    {"symbol": "USDC", "name": "USD Coin",   "color": "#2775ca", "decimals": 6},
+    {"symbol": "XRP",  "name": "XRP",        "color": "#23292f", "decimals": 6},
+    {"symbol": "ADA",  "name": "Cardano",    "color": "#0033ad", "decimals": 6},
+    {"symbol": "DOGE", "name": "Dogecoin",   "color": "#c2a633", "decimals": 8},
+    {"symbol": "TRX",  "name": "TRON",       "color": "#ff060a", "decimals": 6},
+    {"symbol": "MATIC","name": "Polygon",    "color": "#8247e5", "decimals": 18},
+    {"symbol": "DOT",  "name": "Polkadot",   "color": "#e6007a", "decimals": 10},
+]
+COIN_BY_SYM = {c["symbol"]: c for c in COINS}
+
+
+# ----------------------------------------------------------------------------
+# Stocks universe (mock — tokenised equities shown on /wallet/stocks)
+# ----------------------------------------------------------------------------
+STOCKS = [
+    {"ticker": "AAPL",  "name": "Apple Inc.",                 "price_eur": 218.74, "change_24h_pct":  1.42, "market_cap_eur": "3.36T"},
+    {"ticker": "MSFT",  "name": "Microsoft Corp.",            "price_eur": 432.10, "change_24h_pct":  0.78, "market_cap_eur": "3.21T"},
+    {"ticker": "SAP",   "name": "SAP SE",                     "price_eur": 187.55, "change_24h_pct":  1.95, "market_cap_eur": "230.2B"},
+    {"ticker": "ALV",   "name": "Allianz SE",                 "price_eur": 264.30, "change_24h_pct": -0.43, "market_cap_eur": "103.8B"},
+    {"ticker": "SIE",   "name": "Siemens AG",                 "price_eur": 178.92, "change_24h_pct":  2.18, "market_cap_eur": "142.5B"},
+    {"ticker": "BMW",   "name": "Bayerische Motoren Werke",   "price_eur":  88.74, "change_24h_pct": -1.27, "market_cap_eur":  "57.2B"},
+    {"ticker": "VOW3",  "name": "Volkswagen AG",              "price_eur": 104.21, "change_24h_pct":  0.64, "market_cap_eur":  "52.4B"},
+    {"ticker": "DTE",   "name": "Deutsche Telekom AG",        "price_eur":  26.18, "change_24h_pct":  0.31, "market_cap_eur": "129.6B"},
+    {"ticker": "IFX",   "name": "Infineon Technologies AG",   "price_eur":  35.84, "change_24h_pct": -2.05, "market_cap_eur":  "46.1B"},
+    {"ticker": "ADS",   "name": "adidas AG",                  "price_eur": 213.40, "change_24h_pct":  3.11, "market_cap_eur":  "40.2B"},
+    {"ticker": "BAS",   "name": "BASF SE",                    "price_eur":  44.96, "change_24h_pct": -0.18, "market_cap_eur":  "40.5B"},
+    {"ticker": "MUV2",  "name": "Münchener Rückversicherung", "price_eur": 482.50, "change_24h_pct":  0.92, "market_cap_eur":  "61.3B"},
+    {"ticker": "RWE",   "name": "RWE AG",                     "price_eur":  32.07, "change_24h_pct":  1.74, "market_cap_eur":  "24.8B"},
+    {"ticker": "EOAN",  "name": "E.ON SE",                    "price_eur":  14.22, "change_24h_pct": -0.55, "market_cap_eur":  "37.1B"},
+    {"ticker": "AMZN",  "name": "Amazon.com Inc.",            "price_eur": 192.05, "change_24h_pct":  1.86, "market_cap_eur": "2.01T"},
+]
 
 
 # ----------------------------------------------------------------------------
@@ -329,6 +416,25 @@ def wallet_activity():
         **_wallet_ctx(session["user_email"]),
         activity=_activity_for(session["user_email"]),
     )
+
+
+@app.route("/wallet/dex")
+@login_required
+def wallet_dex():
+    """DEX / swap UI — pure presentation, no live pricing yet."""
+    ctx = _wallet_ctx(session["user_email"])
+    ctx["coins"] = COINS
+    ctx["stocks"] = STOCKS
+    return render_template("dex.html", **ctx)
+
+
+@app.route("/wallet/stocks")
+@login_required
+def wallet_stocks():
+    """Tokenised equities UI — mock data from STOCKS."""
+    ctx = _wallet_ctx(session["user_email"])
+    ctx["stocks"] = STOCKS
+    return render_template("stocks.html", **ctx)
 
 
 # ----------------------------------------------------------------------------
@@ -491,6 +597,16 @@ def admin_sample():
 _ensure_users_skeleton()
 _ensure_wallets_skeleton()
 _ensure_activity_skeleton()
+
+
+@app.context_processor
+def _inject_globals():
+    """Make COINS available to every template (used by modal, sidebar, etc.)."""
+    return {
+        "COINS": COINS,
+        "COIN_BY_SYM": COIN_BY_SYM,
+        "STOCKS": STOCKS,
+    }
 
 
 if __name__ == "__main__":
