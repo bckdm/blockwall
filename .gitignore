@@ -16,3 +16,7 @@ app.log
 .gitignore.tmp
 start.bat
 blockwall-push.ps1
+
+*.bak
+*.bak2
+
