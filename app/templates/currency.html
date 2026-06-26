@@ -37,35 +37,52 @@
 <div class="bc-card bc-chart-card">
   <div class="bc-chart-meta">
     <div class="bc-chart-meta__label">Aktueller Preis</div>
-    <div class="bc-chart-meta__price bc-amount" data-bc-balance="€{{ '%0.4f'|format(coin.balance_eur / coin.balance_qty if coin.balance_qty else 0.2829) }}">€{{ '%0.4f'|format(coin.balance_eur / coin.balance_qty if coin.balance_qty else 0.2829) }}</div>
-    <div class="bc-chart-meta__delta">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-      €0.0023  (0.82%)
+    {% set price = coin.price_eur or 0 %}
+    {% if price < 1 %}
+      {% set price_str = "{:,.4f}".format(price) %}
+    {% else %}
+      {% set price_str = "{:,.2f}".format(price) %}
+    {% endif %}
+    <div class="bc-chart-meta__price bc-amount" data-bc-balance="€{{ price_str }}">
+      €{{ price_str }}
+    </div>
+    {% set chg = coin.change_24h_pct or 0 %}
+    <div class="bc-chart-meta__delta {% if chg < 0 %}is-down{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        {% if chg >= 0 %}<path d="M12 19V5M5 12l7-7 7 7"/>{% else %}<path d="M12 5v14M5 12l7 7 7-7"/>{% endif %}
+      </svg>
+      {{ '%+.2f'|format(chg) }}%
       <span style="color:var(--bc-text-muted);font-weight:400;margin-left:6px;">Letzte 24h</span>
     </div>
   </div>
   <svg class="bc-chart" viewBox="0 0 800 260" preserveAspectRatio="none" id="bc-chart-svg"></svg>
   <script>
     (function () {
-      // simple deterministic pseudo-chart that resembles a 24h line
       var svg = document.getElementById('bc-chart-svg');
       if (!svg) return;
       var W = 800, H = 260, padY = 24;
+      // deterministic pseudo-chart that ends near the live 24h change
+      var change = {{ chg }};
       var pts = [165,170,180,172,168,175,185,195,188,178,170,162,158,168,180,178,170,160,152,148,142,138,130,135,140,150,158,165,175,180,172,165,160,155,148,140,135,128,118,108,102,98,110,128,148,165,180,170,158,148,140,132,128,122,118,124,135,148,162,175,180,170,158,150];
+      // shift final point so the trend reflects the 24h change %
+      var last = pts[pts.length - 1];
+      var first = pts[0];
+      var trend = change >= 0 ? 1.10 : 0.90;
+      pts[pts.length - 1] = Math.max(50, Math.min(220, first * trend));
       var max = Math.max.apply(null, pts), min = Math.min.apply(null, pts);
       function x(i){ return i*(W-30)/(pts.length-1) + 15; }
       function y(v){ return H-padY - ((v-min)/(max-min))*(H-padY*2); }
       var d = pts.map(function(v,i){ return (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
       var ns = 'http://www.w3.org/2000/svg';
+      var stroke = change >= 0 ? '#0e9f6e' : '#d63a3a';
       var path = document.createElementNS(ns, 'path');
       path.setAttribute('d', d);
       path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', '#0e9f6e');
+      path.setAttribute('stroke', stroke);
       path.setAttribute('stroke-width', '2.5');
       path.setAttribute('stroke-linejoin', 'round');
       path.setAttribute('stroke-linecap', 'round');
       svg.appendChild(path);
-      // x-axis labels
       var labels = ['11:00 PM','03:00 AM','07:00 AM','11:00 AM','03:00 PM'];
       var step = Math.floor(pts.length/(labels.length-1));
       labels.forEach(function(lbl, idx) {
@@ -86,7 +103,8 @@
 <div class="bc-balance-actions">
   <div class="bc-balance">
     <div class="bc-balance__label">Ihr Gesamtbestand {{ coin.symbol }}</div>
-    <div class="bc-balance__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(coin.balance_eur) }}" data-bc-wallet-symbol="{{ coin.symbol }}">€{{ '%0.2f'|format(coin.balance_eur) }}</div>
+    {% set eur_value = (coin.balance_qty or 0) * (coin.price_eur or 0) %}
+    <div class="bc-balance__amount bc-amount" data-bc-balance="€{{ '%.2f'|format(eur_value) }}" data-bc-wallet-symbol="{{ coin.symbol }}">€{{ '%.2f'|format(eur_value) }}</div>
     <div style="color:var(--bc-text-muted);font-size:12px;margin-top:4px;">{{ '%0.4f'|format(coin.balance_qty) }} {{ coin.qty_unit }}</div>
   </div>
   <div class="bc-actions">

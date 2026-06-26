@@ -18,8 +18,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 22v-6M2 12h6M22 12h-6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4"/></svg>
         </span>
         <div>
-          <div class="bc-stocks__callout-title">Aktien sind jetzt verfügbar</div>
-          <div class="bc-stocks__callout-sub">Handel tokenisierte Aktien 24/7.</div>
+          <div class="bc-stocks__callout-title">Krypto-Assets jetzt verfügbar</div>
+          <div class="bc-stocks__callout-sub">Handel Token 24/7.</div>
         </div>
       </div>
     </div>
@@ -28,7 +28,7 @@
   <div class="bc-stocks__bar">
     <div class="bc-stocks__search-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="bc-stocks__search-icon"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input class="bc-stocks__search" id="bc-stocks-search" type="search" placeholder="Aktien suchen" autocomplete="off">
+      <input class="bc-stocks__search" id="bc-stocks-search" type="search" placeholder="Assets suchen" autocomplete="off">
     </div>
     <button class="bc-stocks__filter" type="button" title="Filter" aria-label="Filter">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
@@ -46,16 +46,19 @@
     </div>
     <div class="bc-stocks-table__body" id="bc-stocks-body">
       {% for s in stocks %}
-      <a class="bc-stocks-row" href="#" data-bc-stock-row data-name="{{ s.name }}" data-ticker="{{ s.ticker }}">
+      <a class="bc-stocks-row" href="{{ url_for('wallet_currency', sym=s.ticker) }}"
+         data-bc-stock-row
+         data-name="{{ s.name }} {{ s.ticker }}"
+         data-ticker="{{ s.ticker }}">
         <div class="bc-stocks-row__name">
-          <span class="bc-stocks-row__logo" style="background: #1a1a2e;">{{ s.ticker[0] }}</span>
+          <span class="bc-stocks-row__logo" style="background:{{ s.color }};">{{ s.ticker[0] }}</span>
           <span class="bc-stocks-row__text">
             <span class="bc-stocks-row__title">{{ s.name }}</span>
             <span class="bc-stocks-row__ticker">{{ s.ticker }}</span>
           </span>
         </div>
         <div class="bc-stocks-row__price bc-amount" data-bc-balance="€{{ '%.2f'|format(s.price_eur) }}">
-          €{{ '%.2f'|format(s.price_eur) }}
+          €{{ '{:,.2f}'.format(s.price_eur) }}
         </div>
         <div class="bc-stocks-row__change {% if s.change_24h_pct >= 0 %}up{% else %}down{% endif %}">
           {% if s.change_24h_pct >= 0 %}↑{% else %}↓{% endif %}

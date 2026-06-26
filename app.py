@@ -157,24 +157,26 @@ def _ensure_wallets_skeleton():
         wb = Workbook()
         ws = wb.active
         ws.title = "wallets"
-        ws.append(["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit"])
-        # Seed all 12 coins for the demo user with €0 balances (TRX keeps the demo row)
+        ws.append(["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit", "address"])
+        # Seed all 12 coins for the demo user. BTC carries the demo balance so the
+        # currency profile page has something interesting on first load.
+        btc_price = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
         seed_demo = [
-            ("TRX",  "TRON",       0.28, 1.0),
-            ("BTC",  "Bitcoin",    0.00, 0.0),
-            ("ETH",  "Ethereum",   0.00, 0.0),
-            ("USDT", "Tether",     0.00, 0.0),
-            ("BNB",  "BNB",        0.00, 0.0),
-            ("SOL",  "Solana",     0.00, 0.0),
-            ("USDC", "USD Coin",   0.00, 0.0),
-            ("XRP",  "XRP",        0.00, 0.0),
-            ("ADA",  "Cardano",    0.00, 0.0),
-            ("DOGE", "Dogecoin",   0.00, 0.0),
-            ("MATIC","Polygon",    0.00, 0.0),
-            ("DOT",  "Polkadot",   0.00, 0.0),
+            ("BTC",   "Bitcoin",  0.025 * btc_price, 0.025, "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
+            ("ETH",   "Ethereum", 0.00, 0.0, "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"),
+            ("USDT",  "Tether",   0.00, 0.0, "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjD6Sz"),
+            ("BNB",   "BNB",      0.00, 0.0, "bnb1grpf0955t0tlt8eaw9g0w78v5q8v3f5d3wqczp"),
+            ("SOL",   "Solana",   0.00, 0.0, "7EYnhQoAGqH7ZbRq8HQq8j4xQ4v5v9NQ7vC2vN3o8X7XJ"),
+            ("USDC",  "USD Coin", 0.00, 0.0, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+            ("XRP",   "XRP",      0.00, 0.0, "rDsbeomae4FXwgQTJp9Rs64Qg9vDiTCdBv"),
+            ("ADA",   "Cardano",  0.00, 0.0, "addr1q9zy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
+            ("DOGE",  "Dogecoin", 0.00, 0.0, "DH5yaieqoZN36pDV3xcpbwAY7Sa1YQsv7p"),
+            ("TRX",   "TRON",     0.00, 0.0, "TQrZ7d8xNhP9xK2yR5hLkQ3jF8m6bC4wYvE"),
+            ("MATIC", "Polygon",  0.00, 0.0, "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"),
+            ("DOT",   "Polkadot", 0.00, 0.0, "1FRMM8d8HdJzk6FpZ7j5vW2pGcZ7Y2qJxC8Rf5oKjHn8U"),
         ]
-        for sym, name, eur, qty in seed_demo:
-            ws.append(["demo@blockchain-demo.com", sym, name, eur, qty, sym])
+        for sym, name, eur, qty, addr in seed_demo:
+            ws.append(["demo@blockchain-demo.com", sym, name, eur, qty, sym, addr])
         wb.save(WALLETS_XLSX)
 
 
@@ -194,7 +196,7 @@ def _wallets_for(email):
             ordered.append(by_sym[c["symbol"]])
         else:
             ordered.append({"email": email, "symbol": c["symbol"], "name": c["name"],
-                            "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"]})
+                            "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"], "address": ""})
     return ordered
 
 
@@ -211,11 +213,68 @@ def _ensure_user_wallet_rows(email):
         return
     for c in missing:
         rows.append({"email": email, "symbol": c["symbol"], "name": c["name"],
-                     "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"]})
+                     "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"], "address": ""})
+    _write_wallets(rows)
+
+
+def _write_wallets(rows):
+    """Persist the wallets sheet including the optional address column."""
     _write_xlsx(
         WALLETS_XLSX, "wallets", rows,
-        ["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit"],
+        ["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit", "address"],
     )
+
+
+def _set_wallet(email, symbol, **fields):
+    """Update one wallet row (email + symbol). Recreates the row if missing.
+    Supported fields: balance_qty, balance_eur, address, name."""
+    email = (email or "").strip().lower()
+    symbol = (symbol or "").strip().upper()
+    if not email or not symbol:
+        return False
+    rows = _read_xlsx(WALLETS_XLSX, "wallets")
+    universe = COIN_BY_SYM.get(symbol, {"symbol": symbol, "name": symbol})
+    found = False
+    for r in rows:
+        if (str(r.get("email", "")).strip().lower() == email
+                and str(r.get("symbol", "")).strip().upper() == symbol):
+            if "balance_qty" in fields and fields["balance_qty"] is not None:
+                qty = float(fields["balance_qty"])
+                r["balance_qty"] = qty
+                # auto-recompute EUR from qty × current price unless caller provided both
+                if "balance_eur" not in fields or fields["balance_eur"] in (None, ""):
+                    r["balance_eur"] = round(qty * universe.get("price_eur", 0), 2)
+            if "balance_eur" in fields and fields["balance_eur"] not in (None, ""):
+                r["balance_eur"] = float(fields["balance_eur"])
+            if "address" in fields:
+                r["address"] = str(fields["address"] or "").strip()
+            found = True
+            break
+    if not found:
+        new = {
+            "email": email,
+            "symbol": symbol,
+            "name": universe.get("name", symbol),
+            "balance_eur": 0,
+            "balance_qty": 0,
+            "qty_unit": symbol,
+            "address": "",
+        }
+        if "balance_qty" in fields and fields["balance_qty"] is not None:
+            new["balance_qty"] = float(fields["balance_qty"])
+            new["balance_eur"] = round(new["balance_qty"] * universe.get("price_eur", 0), 2)
+        if "balance_eur" in fields and fields["balance_eur"] not in (None, ""):
+            new["balance_eur"] = float(fields["balance_eur"])
+        if "address" in fields:
+            new["address"] = str(fields["address"] or "").strip()
+        rows.append(new)
+    _write_wallets(rows)
+    return True
+
+
+def _apply_wallet_upload(email, symbol, qty, address):
+    """Create-or-update one wallet row from an admin upload."""
+    _set_wallet(email, symbol, balance_qty=qty, address=address)
 
 
 def _networth(email):
@@ -276,41 +335,36 @@ def admin_required(fn):
 # Currency universe (12 popular coins — used by home/assets/DEX/modal)
 # ----------------------------------------------------------------------------
 COINS = [
-    {"symbol": "BTC",  "name": "Bitcoin",    "color": "#f7931a", "decimals": 8},
-    {"symbol": "ETH",  "name": "Ethereum",   "color": "#627eea", "decimals": 18},
-    {"symbol": "USDT", "name": "Tether",     "color": "#26a17b", "decimals": 6},
-    {"symbol": "BNB",  "name": "BNB",        "color": "#f3ba2f", "decimals": 18},
-    {"symbol": "SOL",  "name": "Solana",     "color": "#9945ff", "decimals": 9},
-    {"symbol": "USDC", "name": "USD Coin",   "color": "#2775ca", "decimals": 6},
-    {"symbol": "XRP",  "name": "XRP",        "color": "#23292f", "decimals": 6},
-    {"symbol": "ADA",  "name": "Cardano",    "color": "#0033ad", "decimals": 6},
-    {"symbol": "DOGE", "name": "Dogecoin",   "color": "#c2a633", "decimals": 8},
-    {"symbol": "TRX",  "name": "TRON",       "color": "#ff060a", "decimals": 6},
-    {"symbol": "MATIC","name": "Polygon",    "color": "#8247e5", "decimals": 18},
-    {"symbol": "DOT",  "name": "Polkadot",   "color": "#e6007a", "decimals": 10},
+    # symbol, name, color, decimals, price_eur (live), 24h change %, market cap EUR
+    {"symbol": "BTC",   "name": "Bitcoin",   "color": "#f7931a", "decimals": 8,  "price_eur":   87234.50, "change_24h_pct":  1.84, "market_cap_eur": "1.72T"},
+    {"symbol": "ETH",   "name": "Ethereum",  "color": "#627eea", "decimals": 18, "price_eur":    3208.72, "change_24h_pct":  0.92, "market_cap_eur": "385.6B"},
+    {"symbol": "USDT",  "name": "Tether",    "color": "#26a17b", "decimals": 6,  "price_eur":       0.92, "change_24h_pct": -0.02, "market_cap_eur": "112.4B"},
+    {"symbol": "BNB",   "name": "BNB",       "color": "#f3ba2f", "decimals": 18, "price_eur":     584.30, "change_24h_pct":  2.45, "market_cap_eur":  "85.7B"},
+    {"symbol": "SOL",   "name": "Solana",    "color": "#9945ff", "decimals": 9,  "price_eur":     152.18, "change_24h_pct":  3.61, "market_cap_eur":  "70.8B"},
+    {"symbol": "USDC",  "name": "USD Coin",  "color": "#2775ca", "decimals": 6,  "price_eur":       0.92, "change_24h_pct":  0.01, "market_cap_eur":  "32.1B"},
+    {"symbol": "XRP",   "name": "XRP",       "color": "#23292f", "decimals": 6,  "price_eur":       0.48, "change_24h_pct": -1.27, "market_cap_eur":  "26.3B"},
+    {"symbol": "ADA",   "name": "Cardano",   "color": "#0033ad", "decimals": 6,  "price_eur":       0.36, "change_24h_pct": -0.85, "market_cap_eur":  "12.9B"},
+    {"symbol": "DOGE",  "name": "Dogecoin",  "color": "#c2a633", "decimals": 8,  "price_eur":       0.12, "change_24h_pct":  4.21, "market_cap_eur":  "17.4B"},
+    {"symbol": "TRX",   "name": "TRON",      "color": "#ff060a", "decimals": 6,  "price_eur":       0.28, "change_24h_pct":  0.12, "market_cap_eur":  "24.1B"},
+    {"symbol": "MATIC", "name": "Polygon",   "color": "#8247e5", "decimals": 18, "price_eur":       0.42, "change_24h_pct": -2.18, "market_cap_eur":   "3.9B"},
+    {"symbol": "DOT",   "name": "Polkadot",  "color": "#e6007a", "decimals": 10, "price_eur":       5.83, "change_24h_pct":  1.05, "market_cap_eur":   "8.2B"},
 ]
 COIN_BY_SYM = {c["symbol"]: c for c in COINS}
 
 
 # ----------------------------------------------------------------------------
-# Stocks universe (mock — tokenised equities shown on /wallet/stocks)
+# Aktien page — reuses COINS so DEX and Aktien stay consistent
 # ----------------------------------------------------------------------------
 STOCKS = [
-    {"ticker": "AAPL",  "name": "Apple Inc.",                 "price_eur": 218.74, "change_24h_pct":  1.42, "market_cap_eur": "3.36T"},
-    {"ticker": "MSFT",  "name": "Microsoft Corp.",            "price_eur": 432.10, "change_24h_pct":  0.78, "market_cap_eur": "3.21T"},
-    {"ticker": "SAP",   "name": "SAP SE",                     "price_eur": 187.55, "change_24h_pct":  1.95, "market_cap_eur": "230.2B"},
-    {"ticker": "ALV",   "name": "Allianz SE",                 "price_eur": 264.30, "change_24h_pct": -0.43, "market_cap_eur": "103.8B"},
-    {"ticker": "SIE",   "name": "Siemens AG",                 "price_eur": 178.92, "change_24h_pct":  2.18, "market_cap_eur": "142.5B"},
-    {"ticker": "BMW",   "name": "Bayerische Motoren Werke",   "price_eur":  88.74, "change_24h_pct": -1.27, "market_cap_eur":  "57.2B"},
-    {"ticker": "VOW3",  "name": "Volkswagen AG",              "price_eur": 104.21, "change_24h_pct":  0.64, "market_cap_eur":  "52.4B"},
-    {"ticker": "DTE",   "name": "Deutsche Telekom AG",        "price_eur":  26.18, "change_24h_pct":  0.31, "market_cap_eur": "129.6B"},
-    {"ticker": "IFX",   "name": "Infineon Technologies AG",   "price_eur":  35.84, "change_24h_pct": -2.05, "market_cap_eur":  "46.1B"},
-    {"ticker": "ADS",   "name": "adidas AG",                  "price_eur": 213.40, "change_24h_pct":  3.11, "market_cap_eur":  "40.2B"},
-    {"ticker": "BAS",   "name": "BASF SE",                    "price_eur":  44.96, "change_24h_pct": -0.18, "market_cap_eur":  "40.5B"},
-    {"ticker": "MUV2",  "name": "Münchener Rückversicherung", "price_eur": 482.50, "change_24h_pct":  0.92, "market_cap_eur":  "61.3B"},
-    {"ticker": "RWE",   "name": "RWE AG",                     "price_eur":  32.07, "change_24h_pct":  1.74, "market_cap_eur":  "24.8B"},
-    {"ticker": "EOAN",  "name": "E.ON SE",                    "price_eur":  14.22, "change_24h_pct": -0.55, "market_cap_eur":  "37.1B"},
-    {"ticker": "AMZN",  "name": "Amazon.com Inc.",            "price_eur": 192.05, "change_24h_pct":  1.86, "market_cap_eur": "2.01T"},
+    {
+        "ticker": c["symbol"],
+        "name": c["name"],
+        "color": c["color"],
+        "price_eur": c["price_eur"],
+        "change_24h_pct": c["change_24h_pct"],
+        "market_cap_eur": c["market_cap_eur"],
+    }
+    for c in COINS
 ]
 
 
@@ -400,9 +454,19 @@ def wallet_currency(sym):
     sym = sym.upper()
     wallets = _wallets_for(session["user_email"])
     coin = next((w for w in wallets if str(w.get("symbol", "")).upper() == sym), None)
+    # Pull price + 24h from COINS universe (single source of truth)
+    universe = COIN_BY_SYM.get(sym, {"symbol": sym, "name": sym, "price_eur": 0, "change_24h_pct": 0, "color": "#888"})
     if not coin:
-        # graceful — show empty state but keep the page layout
-        coin = {"symbol": sym, "name": sym, "balance_eur": 0, "balance_qty": 0, "qty_unit": sym}
+        coin = {
+            "symbol": sym,
+            "name": universe["name"],
+            "balance_eur": 0,
+            "balance_qty": 0,
+            "qty_unit": sym,
+        }
+    coin["price_eur"] = universe["price_eur"]
+    coin["change_24h_pct"] = universe["change_24h_pct"]
+    coin["color"] = universe["color"]
     ctx = _wallet_ctx(session["user_email"])
     ctx["coin"] = coin
     return render_template("currency.html", **ctx)
@@ -489,13 +553,61 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     users = _all_users()
-    return render_template("admin.html", users=users, count=len(users))
+    # For each user, pull their wallets so the admin can edit balances + addresses inline.
+    wallets_by_email = {}
+    for u in users:
+        email = str(u.get("email", "")).strip().lower()
+        wallets_by_email[email] = _wallets_for(email)
+    return render_template(
+        "admin.html",
+        users=users,
+        count=len(users),
+        coins=COINS,
+        wallets_by_email=wallets_by_email,
+    )
+
+
+@app.route("/admin/wallet", methods=["POST"])
+@admin_required
+def admin_wallet_edit():
+    """Inline edit of a single (email, symbol) wallet row."""
+    email = (request.form.get("email") or "").strip().lower()
+    symbol = (request.form.get("symbol") or "").strip().upper()
+    qty_raw = request.form.get("balance_qty", "").strip()
+    address = request.form.get("address", "").strip()
+
+    if not email or not symbol:
+        flash("E-Mail und Symbol sind erforderlich.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    try:
+        qty = float(qty_raw) if qty_raw else 0.0
+    except ValueError:
+        flash(f"Ungültiger Betrag für {email} / {symbol}: {qty_raw!r}", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    _set_wallet(email, symbol, balance_qty=qty, address=address)
+    flash(f"{symbol}-Guthaben für {email} aktualisiert: {qty} {symbol}", "success")
+    return redirect(url_for("admin_dashboard"))
 
 
 @app.route("/admin/upload", methods=["POST"])
 @admin_required
 def admin_upload():
-    """Accept xlsx with columns: email, password, name (optional)."""
+    """Accept xlsx with one of two formats:
+
+    Format A (legacy user import):
+      email, password, [name]
+
+    Format B (wallet import — first_name, last_name, optional email,
+      optional password, plus balance + address columns per coin):
+      first_name, last_name, [email], [password],
+      btc_value, btc_address, eth_value, eth_address, usdt_value, usdt_address, ...
+
+    Coin columns are detected automatically: any column whose name ends in
+    "_value" is treated as that coin's balance, and the matching
+    "<coin>_address" column as that coin's wallet address.
+    """
     f = request.files.get("file")
     if not f or not f.filename:
         flash("Keine Datei hochgeladen.", "error")
@@ -518,6 +630,20 @@ def admin_upload():
         return redirect(url_for("admin_dashboard"))
 
     header = [str(h or "").strip().lower() for h in rows[0]]
+    header_set = set(header)
+
+    # Detect wallet-import format
+    has_wallet_cols = any(c.endswith("_value") for c in header)
+    has_first_name = "first_name" in header_set
+    has_last_name  = "last_name" in header_set
+
+    if has_wallet_cols or (has_first_name and has_last_name):
+        return _import_wallet_xlsx(header, rows)
+    return _import_legacy_user_xlsx(header, rows)
+
+
+def _import_legacy_user_xlsx(header, rows):
+    """Legacy format: email, password, name (optional)."""
     required = {"email", "password"}
     missing = required - set(header)
     if missing:
@@ -525,7 +651,6 @@ def admin_upload():
         return redirect(url_for("admin_dashboard"))
 
     idx = {h: i for i, h in enumerate(header)}
-
     added = updated = skipped = errors = 0
     error_lines = []
     for lineno, r in enumerate(rows[1:], start=2):
@@ -568,17 +693,123 @@ def admin_upload():
     return redirect(url_for("admin_dashboard"))
 
 
+def _import_wallet_xlsx(header, rows):
+    """Format B: first_name, last_name, [email], [password], <sym>_value, <sym>_address."""
+    idx = {h: i for i, h in enumerate(header)}
+
+    # Discover coin columns
+    value_cols  = [h for h in header if h.endswith("_value")]
+    address_cols = {h[:-len("_value")] + "_address": None for h in value_cols}
+    coins_in_file = []
+    for col in value_cols:
+        sym = col[:-len("_value")].upper()
+        if sym in COIN_BY_SYM:
+            coins_in_file.append(sym)
+    if not coins_in_file:
+        flash("Wallet-Import: keine bekannten <coin>_value Spalten gefunden.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    added = updated = wallets_set = errors = skipped = 0
+    error_lines = []
+
+    for lineno, r in enumerate(rows[1:], start=2):
+        if r is None or all(c is None for c in r):
+            continue
+
+        # Email: prefer explicit column, else build from first_name.last_name@example.com
+        email_raw = ""
+        if "email" in idx:
+            email_raw = str(r[idx["email"]] or "").strip().lower()
+        first = str(r[idx["first_name"]] or "").strip() if "first_name" in idx else ""
+        last  = str(r[idx["last_name"]]  or "").strip() if "last_name"  in idx else ""
+        full_name = (first + " " + last).strip()
+        if not email_raw:
+            if first and last:
+                email_raw = (first + "." + last).lower().replace(" ", ".") + "@example.com"
+            else:
+                error_lines.append(f"Zeile {lineno}: keine E-Mail und kein Vor-/Nachname")
+                errors += 1
+                continue
+        # Build the email + add user if missing
+        password = "demo1234"
+        if "password" in idx and r[idx["password"]]:
+            password = str(r[idx["password"]])
+        pw_hash = generate_password_hash(password)
+        if _find_user(email_raw):
+            _update_user(email_raw, name=full_name)
+            updated += 1
+        else:
+            _update_user(
+                email_raw,
+                password_hash=pw_hash,
+                name=full_name or email_raw.split("@")[0],
+                created_at=datetime.utcnow().isoformat(timespec="seconds"),
+                last_login="",
+            )
+            added += 1
+
+        # Apply each coin row
+        for sym in coins_in_file:
+            v_col = sym.lower() + "_value"
+            a_col = sym.lower() + "_address"
+            v_raw = r[idx[v_col]] if v_col in idx else None
+            a_raw = r[idx[a_col]] if a_col in idx else None
+            try:
+                qty = float(v_raw) if v_raw not in (None, "") else 0.0
+            except (TypeError, ValueError):
+                qty = 0.0
+            address = str(a_raw or "").strip()
+            _set_wallet(email_raw, sym, balance_qty=qty, address=address)
+            wallets_set += 1
+
+    msg = (f"Wallet-Import: {added} Nutzer neu, {updated} aktualisiert, "
+           f"{wallets_set} Wallet-Zeilen gesetzt.")
+    if errors:
+        msg += f" {errors} Fehler: " + "; ".join(error_lines[:5])
+        if len(error_lines) > 5:
+            msg += f" (+{len(error_lines) - 5} weitere)"
+        flash(msg, "error")
+    else:
+        flash(msg, "success")
+    return redirect(url_for("admin_dashboard"))
+
+
 @app.route("/admin/sample")
 @admin_required
 def admin_sample():
-    """Download a sample xlsx so the admin knows the format."""
+    """Download a sample xlsx that demos BOTH upload formats."""
     from openpyxl import Workbook
     wb = Workbook()
-    ws = wb.active
-    ws.title = "users"
-    ws.append(["email", "password", "name"])
-    ws.append(["max@example.com", "geheim123", "Max Mustermann"])
-    ws.append(["anna@example.com", "nocheins", "Anna Schmidt"])
+
+    # Sheet 1: legacy user import
+    ws1 = wb.active
+    ws1.title = "users"
+    ws1.append(["email", "password", "name"])
+    ws1.append(["max@example.com", "geheim123", "Max Mustermann"])
+    ws1.append(["anna@example.com", "nocheins", "Anna Schmidt"])
+
+    # Sheet 2: wallet import (first_name / last_name / coin balances + addresses)
+    ws2 = wb.create_sheet("wallets")
+    header = ["first_name", "last_name", "email", "password"]
+    for c in COINS:
+        header.append(f"{c['symbol'].lower()}_value")
+        header.append(f"{c['symbol'].lower()}_address")
+    ws2.append(header)
+    ws2.append([
+        "Max", "Mustermann", "max@example.com", "demo1234",
+        0.5, "bc1qexampleaddress0000000000000000000000000000000",
+        4.0, "0x1111111111111111111111111111111111111111",
+        0, "",
+        0, "",
+    ])
+    ws2.append([
+        "Anna", "Schmidt", "anna@example.com", "demo1234",
+        0.1, "bc1qexampleaddress0000000000000000000000000000000",
+        0, "",
+        100, "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjD6Sz",
+        0, "",
+    ])
+
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -586,7 +817,7 @@ def admin_sample():
     return send_file(
         buf,
         as_attachment=True,
-        download_name="users_sample.xlsx",
+        download_name="blockwall_sample.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 

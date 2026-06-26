@@ -868,3 +868,21 @@ body[data-bc-balance-hidden="1"] .bc-amount { font-variant-numeric: tabular-nums
   border-radius: 14px; padding: 16px;
 }
 .bc-chart svg { width: 100%; height: 180px; display: block; }
+
+/* =============================================================================
+   Admin user blocks (per-user wallet table)
+   ============================================================================= */
+.admin-user-block { border: 1px solid var(--bc-border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; background: #fafbff; }
+.admin-user-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+.admin-user-name { font-weight: 600; font-size: 15px; color: var(--bc-text); }
+.admin-user-email { font-size: 12px; }
+.admin-wallet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-wallet-table th { background: #f4f6fb; color: var(--bc-text-muted); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--bc-border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+.admin-wallet-table td { padding: 6px 10px; border-bottom: 1px solid #eef0f6; vertical-align: middle; }
+.admin-wallet-table tr:last-child td { border-bottom: 0; }
+.admin-input { width: 100%; padding: 6px 10px; border: 1px solid var(--bc-border); border-radius: 6px; background: #fff; font: inherit; color: var(--bc-text); }
+.admin-input:focus { outline: 0; border-color: var(--bc-link); box-shadow: 0 0 0 3px rgba(22,82,240,0.15); }
+.admin-input--addr { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+.admin-btn--ghost { background: transparent; color: var(--bc-link); border: 1px solid var(--bc-border); padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; }
+.admin-btn--ghost:hover { background: #eaf0ff; border-color: var(--bc-link); }
+.admin-wallet-table form { display: contents; }

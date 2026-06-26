@@ -1,1 +1,12 @@
-C:\Users\VW\Desktop\blockwall\venv\Scripts\python.exe: No module named gunicorn
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\VW\Desktop\blockwall\venv\Lib\site-packages\gunicorn\__main__.py", line 5, in <module>
+    from gunicorn.app.wsgiapp import run
+  File "C:\Users\VW\Desktop\blockwall\venv\Lib\site-packages\gunicorn\app\wsgiapp.py", line 8, in <module>
+    from gunicorn.app.base import Application
+  File "C:\Users\VW\Desktop\blockwall\venv\Lib\site-packages\gunicorn\app\base.py", line 10, in <module>
+    from gunicorn import util
+  File "C:\Users\VW\Desktop\blockwall\venv\Lib\site-packages\gunicorn\util.py", line 7, in <module>
+    import fcntl
+ModuleNotFoundError: No module named 'fcntl'

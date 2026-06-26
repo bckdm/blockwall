@@ -62,11 +62,28 @@
 {% block scripts %}
 <script>
   (function () {
-    // Static fake FX: every coin = 1 EUR for demo purposes.
+    // Live coin prices in EUR (from COINS list in app.py)
     var COIN_PRICE = {};
-    {% for c in COINS %}COIN_PRICE["{{ c.symbol }}"] = 1;{% endfor %}
+    var COIN_BY_SYM = {};
+    {% for c in COINS %}
+      COIN_PRICE["{{ c.symbol }}"] = {{ c.price_eur|tojson }};
+      COIN_BY_SYM["{{ c.symbol }}"] = { name: {{ c.name|tojson }}, color: {{ c.color|tojson }}, decimals: {{ c.decimals|tojson }} };
+    {% endfor %}
 
-    function fmtEur(n) { return "€" + (Math.round(n * 100) / 100).toFixed(2); }
+    function fmtEur(n) {
+      var sign = n < 0 ? "-" : "";
+      var v = Math.abs(n);
+      if (v >= 1000) return sign + "€" + v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (v >= 1)    return sign + "€" + v.toFixed(2).replace(".", ",");
+      return sign + "€" + v.toFixed(4).replace(".", ",");
+    }
+    function fmtQty(n, sym) {
+      if (!sym || !COIN_BY_SYM[sym]) return n.toFixed(4);
+      var d = COIN_BY_SYM[sym].decimals;
+      if (n >= 1000) return n.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+      if (n >= 1)    return n.toFixed(Math.min(4, d));
+      return n.toFixed(Math.min(d, 8));
+    }
 
     function setPicker(btn, sym, color) {
       var icon = btn.querySelector(".bc-coin-icon");
@@ -96,16 +113,32 @@
       var fromPrice = fromSym ? (COIN_PRICE[fromSym] || 0) : 0;
       var toPrice   = toSym   ? (COIN_PRICE[toSym]   || 0) : 0;
 
+      // amount you pay (in EUR)
       var fromEur = amtIn * fromPrice;
-      document.getElementById("bc-dex-from-eur").textContent = fmtEur(fromEur);
-      document.getElementById("bc-dex-from-eur").dataset.bcBalance = fmtEur(fromEur);
 
-      var outQty = toPrice ? (fromEur / toPrice) : 0;
-      document.getElementById("bc-dex-amount-out").value = outQty ? outQty.toFixed(4) : "0";
+      // display the EUR-equivalent under "Sie zahlen" only when a coin is picked
+      var fromEurEl = document.getElementById("bc-dex-from-eur");
+      if (fromSym && fromPrice) {
+        fromEurEl.textContent = "≈ " + fmtEur(fromEur);
+        fromEurEl.dataset.bcBalance = "≈ " + fmtEur(fromEur);
+      } else {
+        fromEurEl.textContent = "€0.00";
+        fromEurEl.dataset.bcBalance = "€0.00";
+      }
 
-      var toEur = fromEur; // 1:1
-      document.getElementById("bc-dex-to-eur").textContent = "~" + fmtEur(toEur);
-      document.getElementById("bc-dex-to-eur").dataset.bcBalance = "~" + fmtEur(toEur);
+      // amount you receive (in the destination coin's units)
+      var outQty = (toSym && toPrice) ? (fromEur / toPrice) : 0;
+      document.getElementById("bc-dex-amount-out").value = outQty ? fmtQty(outQty, toSym) : "0";
+
+      // EUR-equivalent of the receive side (always == fromEur before fees)
+      var toEurEl = document.getElementById("bc-dex-to-eur");
+      if (toSym) {
+        toEurEl.textContent = "≈ " + fmtEur(fromEur);
+        toEurEl.dataset.bcBalance = "≈ " + fmtEur(fromEur);
+      } else {
+        toEurEl.textContent = "≈ €0.00";
+        toEurEl.dataset.bcBalance = "≈ €0.00";
+      }
 
       window.dispatchEvent(new CustomEvent("bc:balances-updated"));
     }
