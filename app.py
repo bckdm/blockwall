@@ -174,8 +174,8 @@ def _ensure_wallets_skeleton():
         ("DOT",   "Polkadot", 0.00, 0.0, "1FRMM8d8HdJzk6FpZ7j5vW2pGcZ7Y2qJxC8Rf5oKjHn8U"),
     ]
     seed_addr = {row[0]: row[4] for row in seed_demo}
-    seed_qty  = {row[0]: row[2] for row in seed_demo}
-    seed_eur  = {row[0]: row[3] for row in seed_demo}
+    seed_qty  = {row[0]: row[3] for row in seed_demo}   # tuple index 3 = qty
+    seed_eur  = {row[0]: row[2] for row in seed_demo}   # tuple index 2 = EUR (qty * price)
     seed_name = {row[0]: row[1] for row in seed_demo}
 
     full_header = ["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit", "address"]
@@ -186,6 +186,7 @@ def _ensure_wallets_skeleton():
         ws.title = "wallets"
         ws.append(full_header)
         for sym, name, eur, qty, addr in seed_demo:
+            # seed_demo tuple is (sym, name, eur, qty, addr)
             ws.append(["demo@blockchain-demo.com", sym, name, eur, qty, sym, addr])
         wb.save(WALLETS_XLSX)
         return
