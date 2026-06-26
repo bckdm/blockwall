@@ -88,7 +88,7 @@ def _write_xlsx(path, sheet, rows, header):
     ws.title = sheet
     ws.append(header)
     for r in rows:
-        ws.append([r.get(h, "") for h in header])
+        ws.append([r.get(h, "") if r.get(h) is not None else "" for h in header])
     wb.save(path)
 
 
@@ -152,32 +152,90 @@ def _update_user(email, **fields):
 # Wallets  (one balance row per user)
 # ----------------------------------------------------------------------------
 def _ensure_wallets_skeleton():
+    """Create wallets.xlsx with the full schema on first run, AND migrate any
+    pre-existing file (no address column, missing BTC row, etc.) so the demo
+    user has a real BTC balance + address after upgrading."""
+    from openpyxl import load_workbook as _lw
+    from openpyxl import Workbook as _wb
+
+    btc_price = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
+    seed_demo = [
+        ("BTC",   "Bitcoin",  0.025 * btc_price, 0.025, "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
+        ("ETH",   "Ethereum", 0.00, 0.0, "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"),
+        ("USDT",  "Tether",   0.00, 0.0, "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjD6Sz"),
+        ("BNB",   "BNB",      0.00, 0.0, "bnb1grpf0955t0tlt8eaw9g0w78v5q8v3f5d3wqczp"),
+        ("SOL",   "Solana",   0.00, 0.0, "7EYnhQoAGqH7ZbRq8HQq8j4xQ4v5v9NQ7vC2vN3o8X7XJ"),
+        ("USDC",  "USD Coin", 0.00, 0.0, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+        ("XRP",   "XRP",      0.00, 0.0, "rDsbeomae4FXwgQTJp9Rs64Qg9vDiTCdBv"),
+        ("ADA",   "Cardano",  0.00, 0.0, "addr1q9zy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
+        ("DOGE",  "Dogecoin", 0.00, 0.0, "DH5yaieqoZN36pDV3xcpbwAY7Sa1YQsv7p"),
+        ("TRX",   "TRON",     0.00, 0.0, "TQrZ7d8xNhP9xK2yR5hLkQ3jF8m6bC4wYvE"),
+        ("MATIC", "Polygon",  0.00, 0.0, "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"),
+        ("DOT",   "Polkadot", 0.00, 0.0, "1FRMM8d8HdJzk6FpZ7j5vW2pGcZ7Y2qJxC8Rf5oKjHn8U"),
+    ]
+    seed_addr = {row[0]: row[4] for row in seed_demo}
+    seed_qty  = {row[0]: row[2] for row in seed_demo}
+    seed_eur  = {row[0]: row[3] for row in seed_demo}
+    seed_name = {row[0]: row[1] for row in seed_demo}
+
+    full_header = ["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit", "address"]
+
     if not os.path.exists(WALLETS_XLSX):
-        from openpyxl import Workbook
-        wb = Workbook()
+        wb = _wb()
         ws = wb.active
         ws.title = "wallets"
-        ws.append(["email", "symbol", "name", "balance_eur", "balance_qty", "qty_unit", "address"])
-        # Seed all 12 coins for the demo user. BTC carries the demo balance so the
-        # currency profile page has something interesting on first load.
-        btc_price = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
-        seed_demo = [
-            ("BTC",   "Bitcoin",  0.025 * btc_price, 0.025, "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
-            ("ETH",   "Ethereum", 0.00, 0.0, "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"),
-            ("USDT",  "Tether",   0.00, 0.0, "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjD6Sz"),
-            ("BNB",   "BNB",      0.00, 0.0, "bnb1grpf0955t0tlt8eaw9g0w78v5q8v3f5d3wqczp"),
-            ("SOL",   "Solana",   0.00, 0.0, "7EYnhQoAGqH7ZbRq8HQq8j4xQ4v5v9NQ7vC2vN3o8X7XJ"),
-            ("USDC",  "USD Coin", 0.00, 0.0, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
-            ("XRP",   "XRP",      0.00, 0.0, "rDsbeomae4FXwgQTJp9Rs64Qg9vDiTCdBv"),
-            ("ADA",   "Cardano",  0.00, 0.0, "addr1q9zy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
-            ("DOGE",  "Dogecoin", 0.00, 0.0, "DH5yaieqoZN36pDV3xcpbwAY7Sa1YQsv7p"),
-            ("TRX",   "TRON",     0.00, 0.0, "TQrZ7d8xNhP9xK2yR5hLkQ3jF8m6bC4wYvE"),
-            ("MATIC", "Polygon",  0.00, 0.0, "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"),
-            ("DOT",   "Polkadot", 0.00, 0.0, "1FRMM8d8HdJzk6FpZ7j5vW2pGcZ7Y2qJxC8Rf5oKjHn8U"),
-        ]
+        ws.append(full_header)
         for sym, name, eur, qty, addr in seed_demo:
             ws.append(["demo@blockchain-demo.com", sym, name, eur, qty, sym, addr])
         wb.save(WALLETS_XLSX)
+        return
+
+    # Migrate an existing file: ensure header has address, ensure demo user
+    # has all 12 coin rows (with BTC carrying a balance + address).
+    try:
+        wb = _lw(WALLETS_XLSX, data_only=True)
+    except Exception:
+        return
+    if "wallets" not in wb.sheetnames:
+        wb.close()
+        return
+    ws = wb["wallets"]
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        wb.close()
+        return
+
+    header = [str(h or "").strip() for h in rows[0]]
+    needs_address = "address" not in header
+    if needs_address:
+        header.append("address")
+    body = [dict(zip(header, list(r) + [""] * max(0, len(header) - len(r)))) for r in rows[1:]]
+
+    # For every user, ensure all 12 coins have rows. For the demo user,
+    # add BTC with the demo balance if it isn't already set.
+    users = sorted({str(r["email"]).strip().lower() for r in body if r.get("email")})
+    have = {(str(r.get("email", "")).strip().lower(), str(r.get("symbol", "")).strip().upper()) for r in body}
+    for email in users:
+        for sym in (c["symbol"] for c in COINS):
+            if (email, sym) in have:
+                continue
+            row = {
+                "email": email,
+                "symbol": sym,
+                "name": seed_name.get(sym, sym),
+                "balance_eur": seed_eur.get(sym, 0) if email == "demo@blockchain-demo.com" else 0,
+                "balance_qty": seed_qty.get(sym, 0)   if email == "demo@blockchain-demo.com" else 0,
+                "qty_unit": sym,
+                "address": seed_addr.get(sym, "")       if email == "demo@blockchain-demo.com" else "",
+            }
+            body.append(row)
+
+    # Make sure every row has all 7 keys
+    for r in body:
+        for k in full_header:
+            r.setdefault(k, "")
+
+    _write_xlsx(WALLETS_XLSX, "wallets", body, full_header)
 
 
 def _wallets_for(email):
@@ -426,11 +484,16 @@ def logout():
 # Wallet pages
 # ----------------------------------------------------------------------------
 def _wallet_ctx(email):
+    wallets = _wallets_for(email)
+    # Sort by EUR balance desc so the home page shows the user's top holdings first.
+    wallets.sort(key=lambda w: float(w.get("balance_eur") or 0), reverse=True)
     return {
         "user_email": email,
         "user_name": session.get("user_name") or email,
         "networth": _networth(email),
-        "wallets": _wallets_for(email),
+        "wallets": wallets,
+        "coins": COINS,
+        "coin_by_sym": COIN_BY_SYM,
     }
 
 
