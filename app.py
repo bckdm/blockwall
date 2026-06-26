@@ -285,20 +285,46 @@ def _wallets_for(email):
 
 
 def _ensure_user_wallet_rows(email):
-    """Make sure email has a row for every coin in COINS (€0 if missing)."""
+    """Make sure email has a row for every coin in COINS (€0 if missing).
+    Also fixes known bugs in the demo BTC row: a previous migration swapped the
+    qty / eur columns, so we detect and correct them here on every call."""
     email = (email or "").strip().lower()
     if not email:
         return
     rows = _read_xlsx(WALLETS_XLSX, "wallets")
     have = {str(w.get("symbol", "")).upper()
             for w in rows if str(w.get("email", "")).strip().lower() == email}
+    changed = False
+    # Repair swapped BTC row on disk for the demo user.
+    if email == "demo@blockchain-demo.com":
+        for r in rows:
+            if (str(r.get("email", "")).strip().lower() == "demo@blockchain-demo.com"
+                    and str(r.get("symbol", "")).strip().upper() == "BTC"):
+                cur_qty = float(r.get("balance_qty") or 0)
+                cur_eur = float(r.get("balance_eur") or 0)
+                # Two known-bad shapes from the prior bug:
+                #   shape A: qty≈0.025, eur>1000   (eur stored as qty, qty stored as eur)
+                #   shape B: qty>1000, eur≈0.025
+                if (abs(cur_qty - 0.025) < 0.001 and cur_eur > 1000):
+                    r["balance_qty"], r["balance_eur"] = cur_eur, cur_qty
+                    changed = True
+                elif (cur_qty > 1000 and abs(cur_eur - 0.025) < 0.001):
+                    r["balance_qty"], r["balance_eur"] = cur_eur, cur_qty
+                    changed = True
+                # Backfill address if missing.
+                if not (r.get("address") or ""):
+                    btc_addr = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+                    r["address"] = btc_addr
+                    changed = True
+                break
     missing = [c for c in COINS if c["symbol"] not in have]
-    if not missing:
-        return
-    for c in missing:
-        rows.append({"email": email, "symbol": c["symbol"], "name": c["name"],
-                     "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"], "address": ""})
-    _write_wallets(rows)
+    if missing:
+        changed = True
+        for c in missing:
+            rows.append({"email": email, "symbol": c["symbol"], "name": c["name"],
+                         "balance_eur": 0, "balance_qty": 0, "qty_unit": c["symbol"], "address": ""})
+    if changed:
+        _write_wallets(rows)
 
 
 def _write_wallets(rows):
