@@ -228,9 +228,22 @@ def _ensure_wallets_skeleton():
                     if not (row.get("address") or ""):
                         row["address"] = seed_addr.get(sym, "")
                     # If BTC row exists but has no balance, seed the demo amount.
-                    if sym == "BTC" and (not row.get("balance_qty") or float(row.get("balance_qty") or 0) == 0):
-                        row["balance_qty"] = seed_qty.get("BTC", 0.025)
-                        row["balance_eur"] = seed_eur.get("BTC", 0.025 * btc_price)
+                    if sym == "BTC":
+                        cur_qty = float(row.get("balance_qty") or 0)
+                        cur_eur = float(row.get("balance_eur") or 0)
+                        # Detect the prior swapped-migration bug:
+                        # qty near 0.025 with eur ~2180, OR qty ~2180 with eur near 0.025.
+                        if abs(cur_qty - 0.025) < 0.001 and abs(cur_eur - 0.025) < 0.001:
+                            pass  # already correct, skip
+                        elif abs(cur_qty - 0.025) < 0.001 and cur_eur > 1000:
+                            # eur is the qty (~2180), qty is the eur (~0.025) — fix
+                            row["balance_qty"], row["balance_eur"] = cur_eur, cur_qty
+                        elif cur_qty > 1000 and abs(cur_eur - 0.025) < 0.001:
+                            # other side of the swap — fix
+                            row["balance_qty"], row["balance_eur"] = cur_eur, cur_qty
+                        elif cur_qty == 0 and cur_eur == 0:
+                            row["balance_qty"] = seed_qty.get("BTC", 0.025)
+                            row["balance_eur"] = seed_eur.get("BTC", 0.025 * btc_price)
                 continue
             row = {
                 "email": email,
