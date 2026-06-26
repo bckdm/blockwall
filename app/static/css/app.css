@@ -886,3 +886,23 @@ body[data-bc-balance-hidden="1"] .bc-amount { font-variant-numeric: tabular-nums
 .admin-btn--ghost { background: transparent; color: var(--bc-link); border: 1px solid var(--bc-border); padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; }
 .admin-btn--ghost:hover { background: #eaf0ff; border-color: var(--bc-link); }
 .admin-wallet-table form { display: contents; }
+
+
+/* =============================================================================
+   Coin address (click to copy)
+   ============================================================================= */
+.bc-coin-address {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  padding: 8px 12px;
+  background: #fafbff;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+  color: var(--bc-text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  user-select: all;
+}
+.bc-coin-address:hover { background: #eef0f6; border-color: var(--bc-link); }
+.bc-coin-address.copied { background: #e8f7ee; border-color: #14a878; color: #0a7c3a; }

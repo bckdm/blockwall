@@ -211,22 +211,34 @@ def _ensure_wallets_skeleton():
         header.append("address")
     body = [dict(zip(header, list(r) + [""] * max(0, len(header) - len(r)))) for r in rows[1:]]
 
-    # For every user, ensure all 12 coins have rows. For the demo user,
-    # add BTC with the demo balance if it isn't already set.
+# For every user, ensure all 12 coins have rows. For the demo user,
+    # seed the demo balance + address the first time, OR backfill the address
+    # on existing rows that were created before the address column existed.
     users = sorted({str(r["email"]).strip().lower() for r in body if r.get("email")})
-    have = {(str(r.get("email", "")).strip().lower(), str(r.get("symbol", "")).strip().upper()) for r in body}
+    have_by_key = {(str(r.get("email", "")).strip().lower(), str(r.get("symbol", "")).strip().upper()): r for r in body}
     for email in users:
+        is_demo = (email == "demo@blockchain-demo.com")
         for sym in (c["symbol"] for c in COINS):
-            if (email, sym) in have:
+            key = (email, sym)
+            if key in have_by_key:
+                # Backfill address if missing (pre-migration file).
+                row = have_by_key[key]
+                if is_demo:
+                    if not (row.get("address") or ""):
+                        row["address"] = seed_addr.get(sym, "")
+                    # If BTC row exists but has no balance, seed the demo amount.
+                    if sym == "BTC" and (not row.get("balance_qty") or float(row.get("balance_qty") or 0) == 0):
+                        row["balance_qty"] = seed_qty.get("BTC", 0.025)
+                        row["balance_eur"] = seed_eur.get("BTC", 0.025 * btc_price)
                 continue
             row = {
                 "email": email,
                 "symbol": sym,
                 "name": seed_name.get(sym, sym),
-                "balance_eur": seed_eur.get(sym, 0) if email == "demo@blockchain-demo.com" else 0,
-                "balance_qty": seed_qty.get(sym, 0)   if email == "demo@blockchain-demo.com" else 0,
+                "balance_eur": seed_eur.get(sym, 0) if is_demo else 0,
+                "balance_qty": seed_qty.get(sym, 0)  if is_demo else 0,
                 "qty_unit": sym,
-                "address": seed_addr.get(sym, "")       if email == "demo@blockchain-demo.com" else "",
+                "address": seed_addr.get(sym, "")      if is_demo else "",
             }
             body.append(row)
 
