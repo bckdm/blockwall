@@ -1,102 +1,83 @@
-{% extends '_base.html' %}
-{% block title %}Admin · Übersicht{% endblock %}
-{% block body %}
-<div class="admin-shell">
-  <aside class="admin-side">
-    <h1>
-      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="">
-      Admin
-    </h1>
-    <nav class="admin-nav">
-      <a href="{{ url_for('admin_dashboard') }}" class="{% if active_view == 'dashboard' %}active{% endif %}">Übersicht</a>
-      <a href="{{ url_for('admin_users') }}" class="{% if active_view == 'users' %}active{% endif %}">Benutzer</a>
-      <a href="{{ url_for('admin_sample') }}">Beispiel-xlsx</a>
-      <a href="{{ url_for('admin_logout') }}">Abmelden</a>
-    </nav>
-  </aside>
-  <main class="admin-main">
-    <h2>Übersicht</h2>
-    <div class="sub">Schneller Blick auf deine Plattform.</div>
+{% extends "_admin_layout.html" %}
+{% set active_view = 'dashboard' %}
+{% block admin_title %}Übersicht{% endblock %}
+{% block admin_h1 %}Übersicht{% endblock %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for cat, msg in messages %}
-          <div class="admin-flash admin-flash--{{ cat }}">{{ msg|safe }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+{% block admin_actions %}
+  <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>
+    Alle Benutzer
+  </a>
+{% endblock %}
 
-    <div class="admin-stat-grid">
-      <a class="admin-stat-card" href="{{ url_for('admin_users') }}">
-        <div class="admin-stat__label">Benutzer gesamt</div>
-        <div class="admin-stat__val">{{ total_users }}</div>
-      </a>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Neu heute</div>
-        <div class="admin-stat__val">{{ new_today }}</div>
+{% block admin_content %}
+<div class="admin-stat-grid">
+  {{ stat_card("Benutzer gesamt", total_users, sublabel="registrierte Accounts", href=url_for('admin_users')) }}
+  {{ stat_card("Neu heute", new_today, sublabel="seit 00:00") }}
+  {{ stat_card("Aktiv (7 Tage)", active_7d, sublabel="mit Anmeldung") }}
+  {{ stat_card("Wallet-Zeilen", total_wallets, sublabel="über " ~ coins|length ~ " Coins") }}
+  {{ stat_card("Aktivität", total_activity, sublabel="Ereignisse gesamt") }}
+</div>
+
+<div class="admin-grid-2">
+  <section class="admin-card">
+    <header class="admin-card__head">
+      <div>
+        <h2 class="admin-card__title">Benutzer-Import</h2>
+        <p class="admin-card__sub">xlsx-Datei mit Benutzern + Wallet-Salden hochladen.</p>
       </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Aktiv (7 Tage)</div>
-        <div class="admin-stat__val">{{ active_7d }}</div>
+    </header>
+
+    <div class="admin-import">
+      <div class="admin-import__format">
+        <div class="admin-import__format-label">Format A — Benutzer</div>
+        <code>email, password, [name]</code>
       </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Wallet-Zeilen</div>
-        <div class="admin-stat__val">{{ total_wallets }}</div>
+      <div class="admin-import__format">
+        <div class="admin-import__format-label">Format B — Wallet</div>
+        <code>first_name, last_name, [email], btc_value, btc_address, eth_value, eth_address, …</code>
       </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Aktivität gesamt</div>
-        <div class="admin-stat__val">{{ total_activity }}</div>
-      </a>
     </div>
 
-    <div class="admin-card">
-      <h3>Benutzer-Import (xlsx)</h3>
-      <p>
-        <strong>Format A (Benutzer-Import):</strong>
-        Spalten <code>email</code>, <code>password</code>, <code>name</code> (optional).
-      </p>
-      <p>
-        <strong>Format B (Wallet-Import):</strong>
-        <code>first_name</code>, <code>last_name</code>, <code>email</code> (optional),
-        <code>password</code> (optional), und pro Coin
-        <code>&lt;sym&gt;_value</code> + <code>&lt;sym&gt;_address</code>.
-      </p>
-      <form class="admin-drop" method="post" action="{{ url_for('admin_upload') }}" enctype="multipart/form-data">
-        <div style="font-size:28px;color:var(--bc-text-muted);">📄</div>
-        <div><strong>Excel-Datei hier ablegen</strong> oder auswählen</div>
-        <input type="file" name="file" accept=".xlsx" required>
-        <button class="admin-btn" type="submit">Hochladen &amp; Importieren</button>
-      </form>
-    </div>
+    <form class="admin-drop" method="post" action="{{ url_for('admin_upload') }}" enctype="multipart/form-data">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="admin-drop__icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="admin-drop__title">Datei hier ablegen oder auswählen</div>
+      <div class="admin-drop__hint">Nur .xlsx · bis 16 MB</div>
+      <input type="file" name="file" accept=".xlsx" required id="admin-drop-input">
+      <label for="admin-drop-input" class="admin-btn">Datei auswählen</label>
+      <button class="admin-btn admin-btn--primary" type="submit">Hochladen &amp; Importieren</button>
+    </form>
+  </section>
 
-    <div class="admin-card">
-      <h3>Zuletzt registriert</h3>
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>E-Mail</th>
-            <th>Name</th>
-            <th>Erstellt</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for u in recent %}
-            <tr>
-              <td><a href="{{ url_for('admin_user_detail', email=u.email) }}">{{ u.email }}</a></td>
-              <td>{{ u.name or '—' }}</td>
-              <td>{{ (u.created_at or '')[:10] or '—' }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="3" class="muted center">Noch keine Benutzer.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <section class="admin-card">
+    <header class="admin-card__head">
+      <div>
+        <h2 class="admin-card__title">Zuletzt registriert</h2>
+        <p class="admin-card__sub">Die 10 neuesten Accounts.</p>
+      </div>
       {% if total_users > 10 %}
-        <div style="margin-top:14px;text-align:right;">
-          <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users') }}">Alle {{ total_users }} Benutzer ansehen →</a>
-        </div>
+        <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users') }}">Alle {{ total_users }} →</a>
       {% endif %}
-    </div>
-  </main>
+    </header>
+
+    {% if recent %}
+      <ul class="admin-recent">
+        {% for u in recent %}
+          <li>
+            <a href="{{ url_for('admin_user_detail', email=u.email) }}" class="admin-recent__row">
+              <div class="admin-recent__avatar">{{ (u.name or u.email)[:1]|upper }}</div>
+              <div class="admin-recent__main">
+                <div class="admin-recent__name">{{ u.name or u.email }}</div>
+                <div class="admin-recent__email">{{ u.email }}</div>
+              </div>
+              <div class="admin-recent__date">{{ (u.created_at or '')[:10] or '—' }}</div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="admin-empty">Noch keine Benutzer.</div>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

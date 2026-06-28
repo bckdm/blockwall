@@ -1,97 +1,101 @@
-{% extends '_base.html' %}
-{% block title %}{{ user.email }} · Benutzer{% endblock %}
-{% block body %}
-<div class="admin-shell">
-  <aside class="admin-side">
-    <h1>
-      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="">
-      Admin
-    </h1>
-    <nav class="admin-nav">
-      <a href="{{ url_for('admin_dashboard') }}" class="{% if active_view == 'dashboard' %}active{% endif %}">Übersicht</a>
-      <a href="{{ url_for('admin_users') }}" class="{% if active_view == 'users' %}active{% endif %}">Benutzer</a>
-      <a href="{{ url_for('admin_sample') }}">Beispiel-xlsx</a>
-      <a href="{{ url_for('admin_logout') }}">Abmelden</a>
-    </nav>
-  </aside>
-  <main class="admin-main">
-    <div class="admin-page-head">
+{% extends "_admin_layout.html" %}
+{% set active_view = 'users' %}
+{% block admin_title %}{{ user.name or user.email }}{% endblock %}
+{% block admin_h1 %}{{ user.name or user.email }}{% endblock %}
+{% block admin_crumbs %}<span>›</span><a href="{{ url_for('admin_users') }}">Benutzer</a><span>›</span><span class="muted">{{ user.email }}</span>{% endblock %}
+
+{% block admin_actions %}
+  <form method="post" action="{{ url_for('admin_user_delete', email=user.email) }}" style="margin:0;" onsubmit="return confirm('Benutzer {{ user.email }} wirklich löschen? Alle Wallets und Aktivität werden mit gelöscht.');">
+    <button class="admin-btn admin-btn--danger" type="submit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+      Löschen
+    </button>
+  </form>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="admin-user-hero">
+  <div class="admin-user-hero__avatar">{{ (user.name or user.email)[:1]|upper }}</div>
+  <div class="admin-user-hero__main">
+    <div class="admin-user-hero__name">{{ user.name or user.email }}</div>
+    <div class="admin-user-hero__email">{{ user.email }}</div>
+  </div>
+  <div class="admin-user-hero__stats">
+    <div>
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Nettovermögen</div>
+      <div class="admin-stat-card__value" style="font-size:22px;">€{{ '{:,.2f}'.format(networth_eur) }}</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Erstellt</div>
+      <div class="admin-stat-card__value" style="font-size:18px;">{{ (user.created_at or '')[:10] or '—' }}</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Letzte Anmeldung</div>
+      <div class="admin-stat-card__value" style="font-size:18px;">{{ (user.last_login or '')[:10] or '—' }}</div>
+    </div>
+    <div>
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Wallet-Zeilen</div>
+      <div class="admin-stat-card__value" style="font-size:22px;">{{ wallets|length }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="admin-tabs">
+  <button class="admin-tab active" data-tab="wallets" type="button">Wallets <span class="admin-tab__count">{{ wallets|length }}</span></button>
+  <button class="admin-tab" data-tab="activity" type="button">Aktivität <span class="admin-tab__count">{{ activity|length }}</span></button>
+</div>
+
+<section class="admin-tab-panel active" data-panel="wallets">
+  <div class="admin-card">
+    <header class="admin-card__head">
       <div>
-        <a href="{{ url_for('admin_users') }}" class="muted" style="font-size:13px;">← Zurück zur Liste</a>
-        <h2 style="margin-top:4px;">{{ user.name or user.email }}</h2>
-        <div class="sub">{{ user.email }}</div>
+        <h2 class="admin-card__title">Wallet-Salden &amp; Adressen</h2>
+        <p class="admin-card__sub">Jede Zeile wird separat gespeichert.</p>
       </div>
-      <form method="post" action="{{ url_for('admin_user_delete', email=user.email) }}" onsubmit="return confirm('Benutzer {{ user.email }} wirklich löschen? Wallets und Aktivität werden mit gelöscht.');" style="margin:0;">
-        <button class="admin-btn admin-btn--danger" type="submit">Benutzer löschen</button>
-      </form>
-    </div>
+    </header>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for cat, msg in messages %}
-          <div class="admin-flash admin-flash--{{ cat }}">{{ msg|safe }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <div class="admin-stat-grid">
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Nettovermögen</div>
-        <div class="admin-stat__val">€{{ '{:,.2f}'.format(networth_eur) }}</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Erstellt</div>
-        <div class="admin-stat__val" style="font-size:18px;">{{ (user.created_at or '')[:10] or '—' }}</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Letzte Anmeldung</div>
-        <div class="admin-stat__val" style="font-size:18px;">{{ (user.last_login or '')[:10] or '—' }}</div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="admin-stat__label">Wallet-Zeilen</div>
-        <div class="admin-stat__val">{{ wallets|length }}</div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <h3>Wallet-Salden &amp; Adressen</h3>
-      <p class="sub">Bearbeite einzelne Werte — jede Zeile wird separat gespeichert.</p>
-      <table class="admin-table admin-wallet-table">
+    <div class="admin-table-wrap">
+      <table class="admin-table">
         <thead>
           <tr>
             <th>Coin</th>
-            <th>Saldo (Qty)</th>
-            <th>Wert (EUR)</th>
+            <th style="text-align:right;">Saldo</th>
+            <th style="text-align:right;">EUR-Wert</th>
             <th>Wallet-Adresse</th>
-            <th>Aktion</th>
+            <th style="width:1%;"></th>
           </tr>
         </thead>
         <tbody>
         {% for w in wallets %}
           {% set coin = coins|selectattr('symbol','equalto',w.symbol)|first %}
-          {% set cur = (w.balance_qty or 0) * (coin.price_eur if coin else 0) %}
+          {% set eur = (w.balance_qty or 0) * (coin.price_eur if coin else 0) %}
           <tr>
             <td>
-              <span class="bc-coin-icon bc-coin-icon--{{ w.symbol|lower }}" style="background: {{ coin.color if coin else '#888' }}; width:24px; height:24px; font-size:11px;">
-                {{ w.symbol[0] }}
+              <span class="admin-coin">
+                <span class="bc-coin-icon bc-coin-icon--{{ w.symbol|lower }}" style="background: {{ coin.color if coin else '#888' }}; width:26px; height:26px; font-size:12px;">
+                  {{ w.symbol[0] }}
+                </span>
+                <span>
+                  <strong>{{ w.symbol }}</strong>
+                  <span class="muted" style="margin-left:6px;">{{ w.name }}</span>
+                </span>
               </span>
-              &nbsp;<strong>{{ w.symbol }}</strong>
-              <span class="muted" style="margin-left:4px;">{{ w.name }}</span>
             </td>
-            <td>
+            <td class="num">
               <form method="post" action="{{ url_for('admin_wallet_edit') }}" style="margin:0;">
                 <input type="hidden" name="email" value="{{ user.email }}">
                 <input type="hidden" name="symbol" value="{{ w.symbol }}">
-                <input class="admin-input" type="number" step="0.00000001" name="balance_qty"
-                       value="{{ w.balance_qty or 0 }}" style="max-width:140px;">
+                <input class="admin-input admin-input--num" type="number" step="0.00000001" name="balance_qty"
+                       value="{{ w.balance_qty or 0 }}">
             </td>
-            <td style="font-variant-numeric:tabular-nums;">€{{ '{:,.2f}'.format(cur) }}</td>
+            <td class="num">€{{ '{:,.2f}'.format(eur) }}</td>
             <td>
                 <input class="admin-input admin-input--addr" type="text" name="address"
                        value="{{ w.address or '' }}" placeholder="Wallet-Adresse">
             </td>
             <td>
-                <button class="admin-btn admin-btn--ghost" type="submit">Speichern</button>
+                <button class="admin-btn admin-btn--ghost admin-btn--small" type="submit">Speichern</button>
               </form>
             </td>
           </tr>
@@ -99,26 +103,58 @@
         </tbody>
       </table>
     </div>
+  </div>
+</section>
 
+<section class="admin-tab-panel" data-panel="activity">
+  <div class="admin-card">
+    <header class="admin-card__head">
+      <div>
+        <h2 class="admin-card__title">Letzte Aktivität</h2>
+        <p class="admin-card__sub">Letzte {{ activity|length }} Ereignisse.</p>
+      </div>
+    </header>
     {% if activity %}
-    <div class="admin-card">
-      <h3>Letzte Aktivität</h3>
-      <table class="admin-table">
-        <thead>
-          <tr><th>Datum</th><th>Typ</th><th>Betrag</th></tr>
-        </thead>
-        <tbody>
-          {% for a in activity %}
-            <tr>
-              <td>{{ (a.ts or '')[:10] or '—' }}</td>
-              <td>{{ a.label }}</td>
-              <td style="font-variant-numeric:tabular-nums;">€{{ '{:,.2f}'.format(a.amount_eur or 0) }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Datum</th><th>Typ</th><th>Betrag</th></tr>
+          </thead>
+          <tbody>
+            {% for a in activity %}
+              <tr>
+                <td class="num">{{ (a.ts or '')[:10] or '—' }}</td>
+                <td>{{ a.label }}</td>
+                <td class="num">€{{ '{:,.2f}'.format(a.amount_eur or 0) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="admin-empty">Noch keine Aktivität für diesen Benutzer.</div>
     {% endif %}
-  </main>
-</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var tabs = document.querySelectorAll('.admin-tab');
+  var panels = document.querySelectorAll('.admin-tab-panel');
+  function activate(name) {
+    tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.tab === name); });
+    panels.forEach(function (p) { p.classList.toggle('active', p.dataset.panel === name); });
+    if (window.history && window.history.replaceState) {
+      try { window.history.replaceState({}, '', '#' + name); } catch (e) {}
+    }
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { activate(t.dataset.tab); });
+  });
+  var h = (window.location.hash || '').replace('#', '');
+  if (h && document.querySelector('[data-tab="' + h + '"]')) activate(h);
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,81 @@
+{% extends "_base.html" %}
+{% block title %}{% block admin_title %}Admin{% endblock %} · {{ super() }}{% endblock %}
+
+{# Reusable: render a stat card #}
+{% macro stat_card(label, value, sublabel="", href=None) -%}
+  {% if href %}<a href="{{ href }}" class="admin-stat-card">{% else %}<div class="admin-stat-card">{% endif %}
+    <div class="admin-stat-card__label">{{ label }}</div>
+    <div class="admin-stat-card__value">{{ value }}</div>
+    {% if sublabel %}<div class="admin-stat-card__sub">{{ sublabel }}</div>{% endif %}
+  {% if href %}</a>{% else %}</div>{% endif %}
+{%- endmacro %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<div class="admin-app">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar__brand">
+      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="">
+      <div>
+        <div class="admin-sidebar__brand-title">Blockwall</div>
+        <div class="admin-sidebar__brand-sub">Admin Console</div>
+      </div>
+    </div>
+
+    <nav class="admin-sidebar__nav">
+      <a href="{{ url_for('admin_dashboard') }}" class="{% if active_view == 'dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Übersicht
+      </a>
+      <a href="{{ url_for('admin_users') }}" class="{% if active_view == 'users' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+        Benutzer
+      </a>
+      <a href="{{ url_for('admin_sample') }}" class="{% if active_view == 'sample' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Import
+      </a>
+    </nav>
+
+    <div class="admin-sidebar__foot">
+      <div class="admin-sidebar__user">
+        <div class="admin-sidebar__avatar">A</div>
+        <div>
+          <div class="admin-sidebar__user-name">Admin</div>
+          <a href="{{ url_for('admin_logout') }}" class="admin-sidebar__logout">Abmelden</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="admin-main-content">
+    <header class="admin-topbar">
+      <div>
+        <div class="admin-topbar__crumbs">
+          <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+          {% block admin_crumbs %}{% endblock %}
+        </div>
+        <h1 class="admin-topbar__title">{% block admin_h1 %}Übersicht{% endblock %}</h1>
+      </div>
+      <div class="admin-topbar__actions">
+        {% block admin_actions %}{% endblock %}
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="admin-flash-stack">
+          {% for cat, msg in messages %}
+            <div class="admin-flash admin-flash--{{ cat }}">{{ msg|safe }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block admin_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

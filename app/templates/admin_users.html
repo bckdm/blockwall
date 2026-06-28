@@ -1,136 +1,129 @@
-{% extends '_base.html' %}
-{% block title %}Benutzer-Verwaltung{% endblock %}
-{% block body %}
-<div class="admin-shell">
-  <aside class="admin-side">
-    <h1>
-      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="">
-      Admin
-    </h1>
-    <nav class="admin-nav">
-      <a href="{{ url_for('admin_dashboard') }}" class="{% if active_view == 'dashboard' %}active{% endif %}">Übersicht</a>
-      <a href="{{ url_for('admin_users') }}" class="{% if active_view == 'users' %}active{% endif %}">Benutzer</a>
-      <a href="{{ url_for('admin_sample') }}">Beispiel-xlsx</a>
-      <a href="{{ url_for('admin_logout') }}">Abmelden</a>
-    </nav>
-  </aside>
-  <main class="admin-main">
-    <div class="admin-page-head">
-      <div>
-        <h2>Benutzer-Verwaltung</h2>
-        <div class="sub">{{ total }} Benutzer · Seite {{ page }} / {{ total_pages }}</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users_export_all', **query_args) }}">CSV-Export</a>
-        <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_sample') }}">Beispiel-xlsx</a>
-      </div>
-    </div>
+{% extends "_admin_layout.html" %}
+{% set active_view = 'users' %}
+{% block admin_title %}Benutzer{% endblock %}
+{% block admin_h1 %}Benutzer{% endblock %}
+{% block admin_crumbs %}<span>›</span><a href="{{ url_for('admin_users') }}">Benutzer</a>{% endblock %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for cat, msg in messages %}
-          <div class="admin-flash admin-flash--{{ cat }}">{{ msg|safe }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+{% block admin_actions %}
+  <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users_export_all', **query_args) }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    CSV
+  </a>
+{% endblock %}
 
-    <form method="get" action="{{ url_for('admin_users') }}" class="admin-toolbar">
-      <div class="admin-toolbar__search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input type="search" name="q" value="{{ q }}" placeholder="Suchen nach E-Mail, Name, Datum…" autocomplete="off">
-      </div>
-      <div class="admin-toolbar__chips">
-        <a class="admin-chip {% if btc == 'all' %}active{% endif %}" href="{{ url_for('admin_users', q=q, btc='all', sort=sort, per_page=per_page) }}">Alle</a>
-        <a class="admin-chip {% if btc == 'btc-only' %}active{% endif %}" href="{{ url_for('admin_users', q=q, btc='btc-only', sort=sort, per_page=per_page) }}">Mit BTC</a>
-        <a class="admin-chip {% if btc == 'no-btc' %}active{% endif %}" href="{{ url_for('admin_users', q=q, btc='no-btc', sort=sort, per_page=per_page) }}">Ohne BTC</a>
-      </div>
-      <select name="sort" class="admin-toolbar__select" onchange="this.form.submit()">
-        <option value="newest"  {% if sort == 'newest' %}selected{% endif %}>Neueste zuerst</option>
-        <option value="oldest"  {% if sort == 'oldest' %}selected{% endif %}>Älteste zuerst</option>
-        <option value="name"    {% if sort == 'name' %}selected{% endif %}>Name (A–Z)</option>
-        <option value="email"   {% if sort == 'email' %}selected{% endif %}>E-Mail (A–Z)</option>
-        <option value="last-login" {% if sort == 'last-login' %}selected{% endif %}>Letzte Anmeldung</option>
-      </select>
-      <select name="per_page" class="admin-toolbar__select" onchange="this.form.submit()">
-        {% for n in [10, 25, 50, 100, 200] %}
-          <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }} / Seite</option>
-        {% endfor %}
-      </select>
-      <button class="admin-btn" type="submit">Filter anwenden</button>
-      {% if q or btc != 'all' or sort != 'newest' %}
-        <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users') }}">Zurücksetzen</a>
-      {% endif %}
-    </form>
+{% block admin_content %}
+<form method="get" action="{{ url_for('admin_users') }}" class="admin-toolbar">
+  <div class="admin-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="search" name="q" value="{{ q }}" placeholder="Suche nach E-Mail, Name, Datum…" autocomplete="off">
+  </div>
+  <div class="admin-chips">
+    <a class="admin-chip {% if btc == 'all' %}active{% endif %}" href="{{ url_for('admin_users', q=q, btc='all', sort=sort, per_page=per_page) }}">Alle</a>
+    <a class="admin-chip {% if btc == 'btc-only' %}active{% endif %}" href="{{ url_for('admin_users', q=q, btc='btc-only', sort=sort, per_page=per_page) }}">Mit BTC</a>
+    <a class="admin-chip {% if btc == 'no-btc' %}active{% endif %}" href="{{ url_for('admin_users', q=q, btc='no-btc', sort=sort, per_page=per_page) }}">Ohne BTC</a>
+  </div>
+  <select name="sort" class="admin-select" onchange="this.form.submit()">
+    <option value="newest"     {% if sort == 'newest' %}selected{% endif %}>Neueste zuerst</option>
+    <option value="oldest"     {% if sort == 'oldest' %}selected{% endif %}>Älteste zuerst</option>
+    <option value="name"       {% if sort == 'name' %}selected{% endif %}>Name (A–Z)</option>
+    <option value="email"      {% if sort == 'email' %}selected{% endif %}>E-Mail (A–Z)</option>
+    <option value="last-login" {% if sort == 'last-login' %}selected{% endif %}>Letzte Anmeldung</option>
+  </select>
+  <select name="per_page" class="admin-select" onchange="this.form.submit()">
+    {% for n in [10, 25, 50, 100, 200] %}<option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }} / Seite</option>{% endfor %}
+  </select>
+  <button class="admin-btn admin-btn--primary" type="submit">Anwenden</button>
+  {% if q or btc != 'all' or sort != 'newest' or per_page != 25 %}
+    <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_users') }}">Zurücksetzen</a>
+  {% endif %}
+</form>
 
-    <form method="post" action="{{ url_for('admin_users_bulk') }}" id="admin-bulk-form">
-      <div class="admin-bulk-bar">
-        <label class="admin-bulk-bar__select-all">
-          <input type="checkbox" id="select-all" onclick="document.querySelectorAll('.admin-row-check').forEach(c => c.checked = this.checked); updateBulkCount();">
-          Alle auf Seite auswählen
-        </label>
-        <span class="muted" id="bulk-count">0 ausgewählt</span>
-        <select name="action" class="admin-toolbar__select">
-          <option value="">Aktion wählen…</option>
-          <option value="reset_password">Passwort zurücksetzen</option>
-          <option value="delete">Löschen</option>
-          <option value="export">Exportieren (CSV)</option>
-        </select>
-        <button class="admin-btn" type="submit" onclick="return confirmBulkAction()">Ausführen</button>
-      </div>
-
-      <div class="admin-card" style="padding:0;overflow:hidden;">
-        <table class="admin-table admin-users-table">
-          <thead>
-            <tr>
-              <th style="width:32px;"></th>
-              <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort=('email' if sort != 'email' else 'newest'), per_page=per_page) }}">E-Mail {{ '▲' if sort == 'email' else '' }}</a></th>
-              <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort=('name' if sort != 'name' else 'newest'), per_page=per_page) }}">Name {{ '▲' if sort == 'name' else '' }}</a></th>
-              <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort='newest', per_page=per_page) }}">Erstellt {{ '▼' if sort == 'newest' else '' }}</a></th>
-              <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort='last-login', per_page=per_page) }}">Letzte Anmeldung {{ '▼' if sort == 'last-login' else '' }}</a></th>
-              <th style="text-align:right;">BTC</th>
-              <th style="text-align:right;">EUR</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for u in users %}
-            {% set meta = rows_meta[loop.index0] %}
-            <tr>
-              <td><input type="checkbox" name="emails" value="{{ u.email }}" class="admin-row-check" onclick="updateBulkCount()"></td>
-              <td><a href="{{ url_for('admin_user_detail', email=u.email) }}">{{ u.email }}</a></td>
-              <td>{{ u.name or '—' }}</td>
-              <td>{{ (u.created_at or '')[:10] or '—' }}</td>
-              <td>{{ (u.last_login or '')[:10] or '—' }}</td>
-              <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ '%.4f'|format(meta.btc_qty) }}</td>
-              <td style="text-align:right;font-variant-numeric:tabular-nums;">€{{ '{:,.2f}'.format(meta.btc_eur) }}</td>
-              <td style="text-align:right;">
-                <a class="admin-btn admin-btn--ghost admin-btn--small" href="{{ url_for('admin_user_detail', email=u.email) }}">Bearbeiten</a>
-              </td>
-            </tr>
-          {% else %}
-            <tr><td colspan="8" class="muted center" style="padding:30px;">Keine Benutzer passen zum Filter.</td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </form>
-
-    {% if total_pages > 1 %}
-    <nav class="admin-pagination">
-      {% set base_args = query_args.to_dict() %}
-      {% set _ = base_args.pop('page', None) %}
-      {% if page > 1 %}
-        <a href="{{ url_for('admin_users', page=page-1, **base_args) }}">← Zurück</a>
-      {% endif %}
-      <span>Seite {{ page }} von {{ total_pages }}</span>
-      {% if page < total_pages %}
-        <a href="{{ url_for('admin_users', page=page+1, **base_args) }}">Weiter →</a>
-      {% endif %}
-    </nav>
-    {% endif %}
-  </main>
+<div class="admin-results-bar">
+  <div>
+    <strong>{{ total }}</strong> Benutzer
+    {% if q or btc != 'all' %} · gefiltert{% endif %}
+  </div>
+  <div class="muted">Seite {{ page }} / {{ total_pages }}</div>
 </div>
 
+<form method="post" action="{{ url_for('admin_users_bulk') }}" id="admin-bulk-form">
+  <div class="admin-bulk-bar">
+    <label class="admin-bulk-bar__select-all">
+      <input type="checkbox" id="select-all" onclick="document.querySelectorAll('.admin-row-check').forEach(c => c.checked = this.checked); updateBulkCount();">
+      <span>Auf dieser Seite auswählen</span>
+    </label>
+    <span class="admin-bulk-bar__count" id="bulk-count">0 ausgewählt</span>
+    <div class="admin-bulk-bar__spacer"></div>
+    <select name="action" class="admin-select">
+      <option value="">Aktion wählen…</option>
+      <option value="reset_password">🔑 Passwort zurücksetzen</option>
+      <option value="delete">🗑 Löschen</option>
+      <option value="export">⬇ Exportieren (CSV)</option>
+    </select>
+    <button class="admin-btn admin-btn--primary" type="submit" onclick="return confirmBulkAction()">Ausführen</button>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width:36px;"></th>
+          <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort=('email' if sort != 'email' else 'newest'), per_page=per_page) }}">E-Mail {{ '↑' if sort == 'email' else '' }}</a></th>
+          <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort=('name' if sort != 'name' else 'newest'), per_page=per_page) }}">Name {{ '↑' if sort == 'name' else '' }}</a></th>
+          <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort='newest', per_page=per_page) }}">Erstellt {{ '↓' if sort == 'newest' else '' }}</a></th>
+          <th><a href="{{ url_for('admin_users', q=q, btc=btc, sort='last-login', per_page=per_page) }}">Letzte Anmeldung {{ '↓' if sort == 'last-login' else '' }}</a></th>
+          <th style="text-align:right;">BTC</th>
+          <th style="text-align:right;">EUR</th>
+          <th style="width:1%;"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+        {% set meta = rows_meta[loop.index0] %}
+        <tr class="admin-row">
+          <td><input type="checkbox" name="emails" value="{{ u.email }}" class="admin-row-check" onclick="updateBulkCount()"></td>
+          <td><a href="{{ url_for('admin_user_detail', email=u.email) }}" class="admin-cell-strong">{{ u.email }}</a></td>
+          <td>{{ u.name or '—' }}</td>
+          <td><span class="admin-cell-date">{{ (u.created_at or '')[:10] or '—' }}</span></td>
+          <td><span class="admin-cell-date">{{ (u.last_login or '')[:10] or '—' }}</span></td>
+          <td class="num">{{ '%.4f'|format(meta.btc_qty) }}</td>
+          <td class="num">€{{ '{:,.2f}'.format(meta.btc_eur) }}</td>
+          <td>
+            <a class="admin-btn admin-btn--ghost admin-btn--small" href="{{ url_for('admin_user_detail', email=u.email) }}">Öffnen</a>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="admin-empty">Keine Benutzer passen zum Filter.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+{% if total_pages > 1 %}
+<nav class="admin-pagination">
+  {% set base_args = query_args.to_dict() %}
+  {% set _ = base_args.pop('page', None) %}
+  {% if page > 1 %}
+    <a href="{{ url_for('admin_users', page=page-1, **base_args) }}">←</a>
+  {% endif %}
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == page %}
+      <span class="current">{{ p }}</span>
+    {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+      <a href="{{ url_for('admin_users', page=p, **base_args) }}">{{ p }}</a>
+    {% elif p == page - 3 or p == page + 3 %}
+      <span class="muted">…</span>
+    {% endif %}
+  {% endfor %}
+  {% if page < total_pages %}
+    <a href="{{ url_for('admin_users', page=page+1, **base_args) }}">→</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
 <script>
 function updateBulkCount() {
   var n = document.querySelectorAll('.admin-row-check:checked').length;
@@ -142,7 +135,7 @@ function confirmBulkAction() {
   if (!act) { alert('Bitte zuerst eine Aktion wählen.'); return false; }
   if (n === 0) { alert('Bitte zuerst Benutzer auswählen.'); return false; }
   if (act === 'delete')  return confirm(n + ' Benutzer wirklich löschen? Wallets und Aktivität werden mit gelöscht.');
-  if (act === 'reset_password') return confirm(n + ' Passwörter zurücksetzen? Es wird ein neues Zufallspasswort generiert.');
+  if (act === 'reset_password') return confirm(n + ' Passwörter zurücksetzen? Es wird je ein neues Zufallspasswort generiert.');
   return true;
 }
 </script>
