@@ -906,3 +906,89 @@ body[data-bc-balance-hidden="1"] .bc-amount { font-variant-numeric: tabular-nums
 }
 .bc-coin-address:hover { background: #eef0f6; border-color: var(--bc-link); }
 .bc-coin-address.copied { background: #e8f7ee; border-color: #14a878; color: #0a7c3a; }
+
+
+/* =============================================================================
+   Admin — overview, stat grid, toolbar, pagination
+   ============================================================================= */
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin: 18px 0 24px;
+}
+.admin-stat-card {
+  background: #fff;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .15s, transform .15s;
+}
+.admin-stat-card:hover { border-color: var(--bc-link); transform: translateY(-1px); text-decoration: none; }
+.admin-stat-card__label { font-size: 11px; color: var(--bc-text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+.admin-stat-card .admin-stat__val { font-size: 26px; font-weight: 700; color: var(--bc-text); margin-top: 4px; line-height: 1.1; }
+
+.admin-page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.admin-page-head h2 { margin: 0; font-size: 22px; }
+
+.admin-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.admin-toolbar__search {
+  flex: 1; min-width: 240px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
+  height: 38px;
+}
+.admin-toolbar__search svg { width: 16px; height: 16px; color: var(--bc-text-muted); }
+.admin-toolbar__search input { flex: 1; border: 0; outline: 0; height: 100%; background: transparent; font-size: 14px; }
+.admin-toolbar__chips { display: flex; gap: 6px; }
+.admin-chip {
+  display: inline-flex; align-items: center; padding: 6px 12px;
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: #fff; color: var(--bc-text-muted); border: 1px solid var(--bc-border);
+  text-decoration: none; transition: all .15s;
+}
+.admin-chip:hover { background: #fafbff; color: var(--bc-text); text-decoration: none; }
+.admin-chip.active { background: #14152b; color: #fff; border-color: #14152b; }
+.admin-toolbar__select {
+  height: 38px; padding: 0 10px;
+  border: 1px solid var(--bc-border); border-radius: 10px;
+  background: #fff; color: var(--bc-text); font-size: 13px;
+  cursor: pointer;
+}
+
+.admin-bulk-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px;
+  background: #fafbff;
+  border: 1px solid var(--bc-border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+}
+.admin-bulk-bar__select-all { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--bc-text); }
+.admin-bulk-bar select { flex: 0 0 auto; }
+.admin-bulk-bar + .admin-card { border-radius: 0 0 12px 12px; border-top: 0; }
+
+.admin-users-table thead a { color: inherit; text-decoration: none; }
+.admin-users-table thead a:hover { color: var(--bc-link); }
+.admin-users-table tbody tr:hover { background: #fafbff; }
+
+.admin-btn--small { padding: 5px 10px; font-size: 12px; }
+.admin-btn--danger { background: var(--bc-danger); color: #fff; border: 1px solid var(--bc-danger); }
+.admin-btn--danger:hover { background: #b22a2a; border-color: #b22a2a; }
+
+.admin-pagination {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  margin-top: 16px; padding: 12px; font-size: 13px; color: var(--bc-text-muted);
+}
+.admin-pagination a {
+  padding: 6px 14px; border: 1px solid var(--bc-border); border-radius: 8px;
+  background: #fff; color: var(--bc-text); text-decoration: none; font-weight: 600;
+}
+.admin-pagination a:hover { background: #eaf0ff; border-color: var(--bc-link); color: var(--bc-link); text-decoration: none; }

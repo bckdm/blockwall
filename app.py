@@ -667,18 +667,290 @@ def admin_logout():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
+    """Landing page: stats + recent activity + quick links to the user manager."""
     users = _all_users()
-    # For each user, pull their wallets so the admin can edit balances + addresses inline.
-    wallets_by_email = {}
-    for u in users:
-        email = str(u.get("email", "")).strip().lower()
-        wallets_by_email[email] = _wallets_for(email)
+    rows = _read_xlsx(WALLETS_XLSX, "wallets")
+    rows_act = _read_xlsx(ACTIVITY_XLSX, "activity")
+
+    # Stats
+    total_users = len(users)
+    today_iso = date.today().isoformat()
+    new_today = sum(1 for u in users if str(u.get("created_at") or "")[:10] == today_iso)
+    active_7d = sum(
+        1 for u in users
+        if (u.get("last_login") and str(u["last_login"])[:10] >= (date.today() - __import__("datetime").timedelta(days=7)).isoformat())
+    )
+    total_wallets = len(rows)
+    total_activity = len(rows_act)
+
+    # Most recent 10 users (by created_at desc)
+    users_sorted = sorted(users, key=lambda u: str(u.get("created_at") or ""), reverse=True)
+    recent = users_sorted[:10]
+
     return render_template(
         "admin.html",
-        users=users,
-        count=len(users),
+        active_view="dashboard",
+        total_users=total_users,
+        new_today=new_today,
+        active_7d=active_7d,
+        total_wallets=total_wallets,
+        total_activity=total_activity,
+        recent=recent,
         coins=COINS,
-        wallets_by_email=wallets_by_email,
+    )
+
+
+# ----------------------------------------------------------------------------
+# Admin — user list (search, filter, sort, pagination, bulk actions)
+# ----------------------------------------------------------------------------
+def _paginate(items, page, per_page):
+    """Slice a list into a page. Returns (page_items, total, total_pages, page, per_page)."""
+    try:
+        page = max(1, int(page or 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        per_page = max(5, min(200, int(per_page or 25)))
+    except (TypeError, ValueError):
+        per_page = 25
+    total = len(items)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    start = (page - 1) * per_page
+    return items[start:start + per_page], total, total_pages, page, per_page
+
+
+def _user_query(users, btc_qty_by_email=None, q="", has_btc="all", sort="newest"):
+    """Apply search + filter + sort to the user list."""
+    q = (q or "").strip().lower()
+    btc_qty_by_email = btc_qty_by_email or {}
+    out = list(users)
+
+    if q:
+        out = [
+            u for u in out
+            if q in str(u.get("email", "")).lower()
+            or q in str(u.get("name", "")).lower()
+            or q in str(u.get("last_login", "")).lower()
+            or q in str(u.get("created_at", "")).lower()
+        ]
+
+    if has_btc == "btc-only":
+        out = [u for u in out if btc_qty_by_email.get(str(u.get("email", "")).strip().lower(), 0) > 0]
+    elif has_btc == "no-btc":
+        out = [u for u in out if btc_qty_by_email.get(str(u.get("email", "")).strip().lower(), 0) == 0]
+
+    if sort == "newest":
+        out.sort(key=lambda u: str(u.get("created_at") or ""), reverse=True)
+    elif sort == "oldest":
+        out.sort(key=lambda u: str(u.get("created_at") or ""))
+    elif sort == "name":
+        out.sort(key=lambda u: str(u.get("name") or u.get("email") or "").lower())
+    elif sort == "email":
+        out.sort(key=lambda u: str(u.get("email") or "").lower())
+    elif sort == "last-login":
+        out.sort(key=lambda u: str(u.get("last_login") or ""), reverse=True)
+    return out
+
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    users = _all_users()
+    # precompute BTC qty per user for the "has BTC" filter
+    btc_qty_by_email = {}
+    for w in _read_xlsx(WALLETS_XLSX, "wallets"):
+        if str(w.get("symbol", "")).upper() == "BTC":
+            btc_qty_by_email[str(w.get("email", "")).strip().lower()] = float(w.get("balance_qty") or 0)
+
+    q         = request.args.get("q", "")
+    has_btc   = request.args.get("btc", "all")
+    sort      = request.args.get("sort", "newest")
+    page      = request.args.get("page", 1)
+    per_page  = request.args.get("per_page", 25)
+
+    filtered = _user_query(users, btc_qty_by_email=btc_qty_by_email, q=q, has_btc=has_btc, sort=sort)
+    page_items, total, total_pages, page, per_page = _paginate(filtered, page, per_page)
+
+    # Networth + BTC summary per user (only for the page rows to keep it cheap)
+    btc_eur = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
+    rows_meta = []
+    for u in page_items:
+        email = str(u.get("email", "")).strip().lower()
+        btc_qty = btc_qty_by_email.get(email, 0)
+        rows_meta.append({
+            "btc_qty": btc_qty,
+            "btc_eur": round(btc_qty * btc_eur, 2),
+        })
+
+    return render_template(
+        "admin_users.html",
+        active_view="users",
+        users=page_items,
+        rows_meta=rows_meta,
+        q=q,
+        btc=has_btc,
+        sort=sort,
+        page=page,
+        per_page=per_page,
+        total=total,
+        total_pages=total_pages,
+        coins=COINS,
+        query_args=request.args,
+    )
+
+
+@app.route("/admin/user/<email>")
+@admin_required
+def admin_user_detail(email):
+    """Detail page: profile, all wallet rows (editable), recent activity, delete."""
+    email = (email or "").strip().lower()
+    user = _find_user(email)
+    if not user:
+        flash(f"Kein Benutzer mit E-Mail '{email}'.", "error")
+        return redirect(url_for("admin_users"))
+    wallets = _wallets_for(email)
+    btc_eur = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
+    networth_eur = sum(
+        float(w.get("balance_qty") or 0) * next((c["price_eur"] for c in COINS if c["symbol"] == str(w.get("symbol", "")).upper()), 0)
+        for w in wallets
+    )
+    activity = _activity_for(email)[:20]
+    return render_template(
+        "admin_user_detail.html",
+        active_view="users",
+        user=user,
+        wallets=wallets,
+        coins=COINS,
+        btc_eur=btc_eur,
+        networth_eur=round(networth_eur, 2),
+        activity=activity,
+    )
+
+
+@app.route("/admin/user/<email>/delete", methods=["POST"])
+@admin_required
+def admin_user_delete(email):
+    email = (email or "").strip().lower()
+    rows = _read_xlsx(USERS_XLSX, "users")
+    new = [r for r in rows if str(r.get("email", "")).strip().lower() != email]
+    if len(new) == len(rows):
+        flash(f"Benutzer '{email}' nicht gefunden.", "error")
+        return redirect(url_for("admin_users"))
+    _write_xlsx(USERS_XLSX, "users", new, ["email", "password_hash", "name", "created_at", "last_login"])
+    # also delete their wallets + activity
+    for path, sheet in [(WALLETS_XLSX, "wallets"), (ACTIVITY_XLSX, "activity")]:
+        ws_rows = _read_xlsx(path, sheet)
+        kept = [r for r in ws_rows if str(r.get("email", "")).strip().lower() != email]
+        # keep header
+        if sheet == "wallets":
+            _write_wallets(kept)
+        else:
+            _write_xlsx(path, sheet, kept,
+                        ["email", "kind", "label", "amount_eur", "amount_qty", "qty_unit", "ts"])
+    flash(f"Benutzer '{email}' gelöscht.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/users/bulk", methods=["POST"])
+@admin_required
+def admin_users_bulk():
+    """Bulk actions: delete | reset_password | export."""
+    action = request.form.get("action", "")
+    emails = [e.strip().lower() for e in request.form.getlist("emails") if e.strip()]
+    if not emails:
+        flash("Keine Benutzer ausgewählt.", "error")
+        return redirect(request.referrer or url_for("admin_users"))
+
+    if action == "delete":
+        users_rows = _read_xlsx(USERS_XLSX, "users")
+        new_users = [r for r in users_rows if str(r.get("email", "")).strip().lower() not in emails]
+        _write_xlsx(USERS_XLSX, "users", new_users, ["email", "password_hash", "name", "created_at", "last_login"])
+        # cascade-delete wallets + activity for the deleted emails
+        for path, sheet in [(WALLETS_XLSX, "wallets"), (ACTIVITY_XLSX, "activity")]:
+            kept = [r for r in _read_xlsx(path, sheet) if str(r.get("email", "")).strip().lower() not in emails]
+            if sheet == "wallets":
+                _write_wallets(kept)
+            else:
+                _write_xlsx(path, sheet, kept,
+                            ["email", "kind", "label", "amount_eur", "amount_qty", "qty_unit", "ts"])
+        flash(f"{len(emails)} Benutzer gelöscht.", "success")
+        return redirect(url_for("admin_users"))
+
+    if action == "reset_password":
+        from secrets import token_urlsafe
+        new_pw = token_urlsafe(8)
+        pw_hash = generate_password_hash(new_pw)
+        rows = _read_xlsx(USERS_XLSX, "users")
+        n = 0
+        for r in rows:
+            if str(r.get("email", "")).strip().lower() in emails:
+                r["password_hash"] = pw_hash
+                n += 1
+        _write_xlsx(USERS_XLSX, "users", rows, ["email", "password_hash", "name", "created_at", "last_login"])
+        # surface the generated password once (won't be retrievable later)
+        flash(f"Neues Passwort für {n} Benutzer: <code>{new_pw}</code>", "success")
+        return redirect(url_for("admin_users"))
+
+    if action == "export":
+        # stream a CSV of the selected users + their BTC balance
+        import csv, io as _io
+        btc_eur = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
+        btc_by_email = {}
+        for w in _read_xlsx(WALLETS_XLSX, "wallets"):
+            if str(w.get("symbol", "")).upper() == "BTC":
+                btc_by_email[str(w.get("email", "")).strip().lower()] = float(w.get("balance_qty") or 0)
+        users_rows = _read_xlsx(USERS_XLSX, "users")
+        selected = [r for r in users_rows if str(r.get("email", "")).strip().lower() in set(emails)]
+        buf = _io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(["email", "name", "created_at", "last_login", "btc_qty", "btc_eur"])
+        for r in selected:
+            email = str(r.get("email", "")).strip().lower()
+            btc_q = btc_by_email.get(email, 0)
+            w.writerow([email, r.get("name", ""), str(r.get("created_at", ""))[:10],
+                        str(r.get("last_login", ""))[:10], btc_q, round(btc_q * btc_eur, 2)])
+        from flask import Response
+        return Response(
+            buf.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="users_export.csv"'},
+        )
+
+    flash(f"Unbekannte Aktion: {action}", "error")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/users/export.csv")
+@admin_required
+def admin_users_export_all():
+    """Export the currently-filtered user list to CSV (reuses admin_users query)."""
+    users = _all_users()
+    btc_qty_by_email = {}
+    for w in _read_xlsx(WALLETS_XLSX, "wallets"):
+        if str(w.get("symbol", "")).upper() == "BTC":
+            btc_qty_by_email[str(w.get("email", "")).strip().lower()] = float(w.get("balance_qty") or 0)
+
+    q         = request.args.get("q", "")
+    has_btc   = request.args.get("btc", "all")
+    sort      = request.args.get("sort", "newest")
+    filtered = _user_query(users, btc_qty_by_email=btc_qty_by_email, q=q, has_btc=has_btc, sort=sort)
+
+    import csv, io as _io
+    btc_eur = next((c["price_eur"] for c in COINS if c["symbol"] == "BTC"), 0)
+    buf = _io.StringIO()
+    cw = csv.writer(buf)
+    cw.writerow(["email", "name", "created_at", "last_login", "btc_qty", "btc_eur"])
+    for r in filtered:
+        email = str(r.get("email", "")).strip().lower()
+        btc_q = btc_qty_by_email.get(email, 0)
+        cw.writerow([email, r.get("name", ""), str(r.get("created_at", ""))[:10],
+                     str(r.get("last_login", ""))[:10], btc_q, round(btc_q * btc_eur, 2)])
+    from flask import Response
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="users_export.csv"'},
     )
 
 

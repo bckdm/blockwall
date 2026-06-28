@@ -1,0 +1,124 @@
+{% extends '_base.html' %}
+{% block title %}{{ user.email }} · Benutzer{% endblock %}
+{% block body %}
+<div class="admin-shell">
+  <aside class="admin-side">
+    <h1>
+      <img src="https://cdn.emailacademy.com/user/f063785d8ad9c8f671bbb86fb1ac7c4625fbbd5f851755f61646448c2e70d748/BCDC2026_06_20_20_32_55.png" alt="">
+      Admin
+    </h1>
+    <nav class="admin-nav">
+      <a href="{{ url_for('admin_dashboard') }}" class="{% if active_view == 'dashboard' %}active{% endif %}">Übersicht</a>
+      <a href="{{ url_for('admin_users') }}" class="{% if active_view == 'users' %}active{% endif %}">Benutzer</a>
+      <a href="{{ url_for('admin_sample') }}">Beispiel-xlsx</a>
+      <a href="{{ url_for('admin_logout') }}">Abmelden</a>
+    </nav>
+  </aside>
+  <main class="admin-main">
+    <div class="admin-page-head">
+      <div>
+        <a href="{{ url_for('admin_users') }}" class="muted" style="font-size:13px;">← Zurück zur Liste</a>
+        <h2 style="margin-top:4px;">{{ user.name or user.email }}</h2>
+        <div class="sub">{{ user.email }}</div>
+      </div>
+      <form method="post" action="{{ url_for('admin_user_delete', email=user.email) }}" onsubmit="return confirm('Benutzer {{ user.email }} wirklich löschen? Wallets und Aktivität werden mit gelöscht.');" style="margin:0;">
+        <button class="admin-btn admin-btn--danger" type="submit">Benutzer löschen</button>
+      </form>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="admin-flash admin-flash--{{ cat }}">{{ msg|safe }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="admin-stat-grid">
+      <div class="admin-stat-card">
+        <div class="admin-stat__label">Nettovermögen</div>
+        <div class="admin-stat__val">€{{ '{:,.2f}'.format(networth_eur) }}</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat__label">Erstellt</div>
+        <div class="admin-stat__val" style="font-size:18px;">{{ (user.created_at or '')[:10] or '—' }}</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat__label">Letzte Anmeldung</div>
+        <div class="admin-stat__val" style="font-size:18px;">{{ (user.last_login or '')[:10] or '—' }}</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat__label">Wallet-Zeilen</div>
+        <div class="admin-stat__val">{{ wallets|length }}</div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h3>Wallet-Salden &amp; Adressen</h3>
+      <p class="sub">Bearbeite einzelne Werte — jede Zeile wird separat gespeichert.</p>
+      <table class="admin-table admin-wallet-table">
+        <thead>
+          <tr>
+            <th>Coin</th>
+            <th>Saldo (Qty)</th>
+            <th>Wert (EUR)</th>
+            <th>Wallet-Adresse</th>
+            <th>Aktion</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for w in wallets %}
+          {% set coin = coins|selectattr('symbol','equalto',w.symbol)|first %}
+          {% set cur = (w.balance_qty or 0) * (coin.price_eur if coin else 0) %}
+          <tr>
+            <td>
+              <span class="bc-coin-icon bc-coin-icon--{{ w.symbol|lower }}" style="background: {{ coin.color if coin else '#888' }}; width:24px; height:24px; font-size:11px;">
+                {{ w.symbol[0] }}
+              </span>
+              &nbsp;<strong>{{ w.symbol }}</strong>
+              <span class="muted" style="margin-left:4px;">{{ w.name }}</span>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('admin_wallet_edit') }}" style="margin:0;">
+                <input type="hidden" name="email" value="{{ user.email }}">
+                <input type="hidden" name="symbol" value="{{ w.symbol }}">
+                <input class="admin-input" type="number" step="0.00000001" name="balance_qty"
+                       value="{{ w.balance_qty or 0 }}" style="max-width:140px;">
+            </td>
+            <td style="font-variant-numeric:tabular-nums;">€{{ '{:,.2f}'.format(cur) }}</td>
+            <td>
+                <input class="admin-input admin-input--addr" type="text" name="address"
+                       value="{{ w.address or '' }}" placeholder="Wallet-Adresse">
+            </td>
+            <td>
+                <button class="admin-btn admin-btn--ghost" type="submit">Speichern</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if activity %}
+    <div class="admin-card">
+      <h3>Letzte Aktivität</h3>
+      <table class="admin-table">
+        <thead>
+          <tr><th>Datum</th><th>Typ</th><th>Betrag</th></tr>
+        </thead>
+        <tbody>
+          {% for a in activity %}
+            <tr>
+              <td>{{ (a.ts or '')[:10] or '—' }}</td>
+              <td>{{ a.label }}</td>
+              <td style="font-variant-numeric:tabular-nums;">€{{ '{:,.2f}'.format(a.amount_eur or 0) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
