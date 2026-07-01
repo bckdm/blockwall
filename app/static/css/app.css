@@ -482,3 +482,280 @@ a:hover { color: var(--bc-link-hover); text-decoration: underline; }
 }
 .bc-login__foot a { color: #fff; text-decoration: underline; }
 .bc-login__copy { margin-top: 6px; color: #b0b0b0; }
+
+/* =============================================================================
+   Senden modal (slide-over, coin picker, amount input)
+   ============================================================================= */
+.bc-modal__panel--send { width: 460px; max-width: calc(100vw - 32px); }
+.bc-modal__panel .bc-send-form { padding: 4px 22px 22px; }
+
+.bc-send-field { margin-top: 16px; }
+.bc-send-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+.bc-send-coin {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.bc-send-coin-meta { flex: 1; min-width: 0; }
+.bc-send-coin-name { font-weight: 600; font-size: 15px; color: var(--bc-text); }
+.bc-send-coin-sub  { font-size: 12px; color: var(--bc-text-muted); margin-top: 2px; }
+.bc-send-coin-change {
+  background: transparent;
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bc-link);
+  cursor: pointer;
+}
+.bc-send-coin-change:hover { background: #eaf0ff; border-color: var(--bc-link); }
+
+.bc-send-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  color: var(--bc-text);
+  outline: 0;
+  transition: border-color .15s, box-shadow .15s;
+}
+.bc-send-input:focus { border-color: var(--bc-link); box-shadow: 0 0 0 3px rgba(22,82,240,0.15); }
+.bc-send-input--mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
+
+.bc-send-amount-wrap { position: relative; }
+.bc-send-amount-wrap .bc-send-input { padding-right: 70px; font-size: 18px; font-weight: 600; }
+.bc-send-amount-unit {
+  position: absolute;
+  top: 50%; right: 14px; transform: translateY(-50%);
+  font-size: 12px; font-weight: 700;
+  color: var(--bc-text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.bc-send-amount-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px;
+}
+.bc-send-amount-equiv { font-size: 12px; color: var(--bc-text-muted); }
+.bc-send-max {
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bc-link);
+  cursor: pointer;
+  padding: 0;
+}
+.bc-send-max:hover { text-decoration: underline; }
+
+.bc-send-submit {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--bc-link);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bc-send-submit:hover { background: var(--bc-link-hover); }
+.bc-send-foot { font-size: 11px; color: var(--bc-text-faint); margin: 8px 4px 0; text-align: center; }
+
+.bc-send-picker { padding: 4px 22px 22px; }
+.bc-send-picker[hidden] { display: none; }
+
+/* =============================================================================
+   Senden confirmation page (Freigabe-Code / release fee)
+   ============================================================================= */
+.bc-send-confirm { max-width: 760px; margin: 0 auto; }
+.bc-send-confirm__head {
+  display: flex; gap: 16px; align-items: flex-start;
+  margin-bottom: 22px;
+}
+.bc-send-confirm__icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: #fff5e1; color: #c98a00;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bc-send-confirm__icon svg { width: 22px; height: 22px; }
+.bc-send-confirm__eyebrow {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--bc-text-muted); font-weight: 700;
+}
+.bc-send-confirm__title { margin: 4px 0 6px; font-size: 22px; letter-spacing: -0.2px; }
+.bc-send-confirm__sub { margin: 0; color: var(--bc-text-muted); font-size: 13px; }
+
+.bc-send-confirm__grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 22px;
+}
+@media (max-width: 720px) { .bc-send-confirm__grid { grid-template-columns: 1fr; } }
+
+.bc-send-confirm__panel {
+  background: var(--bc-input-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.bc-send-confirm__panel--accent {
+  background: linear-gradient(180deg, #fff8e8 0%, #fff 100%);
+  border-color: #f3d57c;
+}
+.bc-send-confirm__label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  font-weight: 700; color: var(--bc-text-muted); margin-bottom: 8px;
+}
+.bc-send-confirm__panel--accent .bc-send-confirm__label { color: #c98a00; }
+.bc-send-confirm__amount {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 22px; font-weight: 700;
+}
+.bc-send-confirm__eur { font-size: 13px; font-weight: 500; color: var(--bc-text-muted); }
+.bc-send-confirm__addr-row {
+  margin-top: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.bc-send-confirm__addr-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--bc-text-muted); font-weight: 600;
+}
+.bc-send-confirm__addr {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px; color: var(--bc-text);
+  background: #fff;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  word-break: break-all;
+}
+
+.bc-send-confirm__steps {
+  list-style: none; margin: 0 0 24px; padding: 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.bc-send-confirm__steps li {
+  display: flex; gap: 12px;
+  background: #fff;
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.bc-send-confirm__step-num {
+  width: 26px; height: 26px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bc-link); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+}
+.bc-send-confirm__steps strong { font-size: 14px; color: var(--bc-text); display: block; margin-bottom: 4px; }
+.bc-send-confirm__steps p { margin: 0; font-size: 13px; color: var(--bc-text-muted); }
+
+.bc-send-confirm__form {
+  background: var(--bc-input-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.bc-send-confirm__input {
+  width: 100%; margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+  background: #fff;
+  outline: 0;
+}
+.bc-send-confirm__input:focus { border-color: var(--bc-link); box-shadow: 0 0 0 3px rgba(22,82,240,0.15); }
+.bc-send-confirm__actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 14px;
+}
+.bc-send-confirm__btn {
+  padding: 10px 18px; border-radius: 999px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; border: 0;
+  text-decoration: none;
+}
+.bc-send-confirm__btn--ghost {
+  background: transparent; color: var(--bc-text-muted);
+  border: 1px solid var(--bc-border);
+}
+.bc-send-confirm__btn--ghost:hover { background: #fff; color: var(--bc-text); text-decoration: none; }
+.bc-send-confirm__btn--primary {
+  background: var(--bc-link); color: #fff;
+}
+.bc-send-confirm__btn--primary:hover { background: var(--bc-link-hover); }
+
+.bc-send-confirm__note {
+  font-size: 12px; color: var(--bc-text-muted);
+  background: #fafbff; border: 1px dashed var(--bc-border);
+  border-radius: 8px; padding: 10px 14px;
+  margin: 0;
+}
+
+/* Admin settings page */
+.admin-settings-grid {
+  display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px;
+}
+@media (max-width: 900px) { .admin-settings-grid { grid-template-columns: 1fr; } }
+.admin-settings-field { padding: 4px 4px; }
+.admin-settings-label {
+  display: block;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px;
+  font-weight: 700; color: var(--adm-text-mut);
+  margin-bottom: 8px;
+}
+.admin-settings-input-wrap {
+  display: flex; align-items: center; gap: 10px;
+}
+.admin-input--lg { font-size: 22px; font-weight: 700; height: 56px; padding: 0 14px; }
+.admin-settings-suffix { font-size: 18px; font-weight: 600; color: var(--adm-text-mut); }
+.admin-settings-hint { font-size: 13px; color: var(--adm-text-mut); margin: 12px 0 0; }
+.admin-settings-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 18px;
+}
+
+.admin-settings-preview__label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  font-weight: 700; color: var(--adm-text-mut); margin-bottom: 8px;
+}
+.admin-settings-preview__box {
+  background: linear-gradient(180deg, #fff8e8 0%, #fff 100%);
+  border: 1px solid #f3d57c;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+}
+.admin-settings-preview__head {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  font-weight: 700; color: #c98a00; margin-bottom: 6px;
+}
+.admin-settings-preview__line { color: var(--adm-text); margin-bottom: 4px; }
+.admin-settings-preview__addr {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 11px; color: var(--adm-text-mut); word-break: break-all;
+  margin-bottom: 8px;
+}
+.admin-settings-preview__divider {
+  height: 1px; background: #f3d57c;
+  margin: 10px -16px;
+}

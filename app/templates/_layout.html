@@ -136,6 +136,87 @@
     </div>
   </div>
 
+  <div class="bc-modal" id="bc-send-modal" aria-hidden="true">
+    <div class="bc-modal__backdrop" data-bc-modal-close="1"></div>
+    <div class="bc-modal__panel" role="dialog" aria-modal="true" aria-labelledby="bc-send-title">
+      <header class="bc-modal__head">
+        <h2 class="bc-modal__title" id="bc-send-title">Senden</h2>
+        <button class="bc-icon-btn" data-bc-modal-close="1" aria-label="Schließen" title="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+        </button>
+      </header>
+
+      <form id="bc-send-form" method="post" action="{{ url_for('wallet_send') }}" class="bc-send-form">
+        <div class="bc-send-field">
+          <label class="bc-send-label">Asset</label>
+          <div class="bc-send-coin" id="bc-send-coin-display" data-bc-send-coin-display>
+            <span class="bc-coin-icon" id="bc-send-coin-icon" style="background:#f7931a">B</span>
+            <div class="bc-send-coin-meta">
+              <div class="bc-send-coin-name" id="bc-send-coin-name">Bitcoin</div>
+              <div class="bc-send-coin-sub" id="bc-send-coin-sub">0,025 BTC · ≈ 2.180 €</div>
+            </div>
+            <button type="button" class="bc-send-coin-change" id="bc-send-coin-change">Ändern</button>
+          </div>
+          <input type="hidden" name="symbol" id="bc-send-symbol" value="{{ wallets[0].symbol if wallets else 'BTC' }}">
+        </div>
+
+        <div class="bc-send-field">
+          <label class="bc-send-label" for="bc-send-address">Empfänger-Adresse</label>
+          <input id="bc-send-address" name="address" class="bc-send-input bc-send-input--mono"
+                 type="text" required autocomplete="off" spellcheck="false"
+                 placeholder="bc1q… oder 0x…">
+        </div>
+
+        <div class="bc-send-field">
+          <label class="bc-send-label" for="bc-send-amount">Betrag</label>
+          <div class="bc-send-amount-wrap">
+            <input id="bc-send-amount" name="amount_qty" class="bc-send-input bc-send-input--amount"
+                   type="number" min="0" step="0.00000001" required
+                   placeholder="0,00">
+            <span class="bc-send-amount-unit" id="bc-send-amount-unit">BTC</span>
+          </div>
+          <div class="bc-send-amount-row">
+            <span class="bc-send-amount-equiv" id="bc-send-amount-equiv">≈ 0,00 €</span>
+            <button type="button" class="bc-send-max" id="bc-send-max">Max</button>
+          </div>
+        </div>
+
+        <button type="submit" class="bc-send-submit">Senden</button>
+        <p class="bc-send-foot">Sie können nur Coins senden, die sich in Ihrer Wallet befinden.</p>
+      </form>
+
+      <div class="bc-send-picker" id="bc-send-picker" hidden>
+        <div class="bc-modal__search-wrap">
+          <svg class="bc-modal__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input class="bc-modal__search" id="bc-send-coin-search" type="search" placeholder="Coins suchen" autocomplete="off">
+        </div>
+        <div class="bc-modal__list" id="bc-send-coin-list">
+          {% for c in COINS %}
+            {% set w = (wallets|selectattr('symbol','equalto',c.symbol)|list|first) %}
+            {% set balance_eur = (w.balance_eur if w else 0) or 0 %}
+            {% set balance_qty = (w.balance_qty if w else 0) or 0 %}
+            <button type="button" class="bc-modal__coin"
+                    data-bc-send-coin="{{ c.symbol }}"
+                    data-bc-send-coin-name="{{ c.name }}"
+                    data-bc-send-coin-color="{{ c.color }}"
+                    data-bc-send-coin-balance="{{ '%.2f'|format(balance_eur) }}"
+                    data-bc-send-coin-qty="{{ '%.8f'|format(balance_qty) }}">
+              <span class="bc-coin-icon bc-coin-icon--{{ c.symbol|lower }}" style="background:{{ c.color }}">{{ c.symbol[0] }}</span>
+              <span class="bc-modal__coin-meta">
+                <span class="bc-modal__coin-name">{{ c.name }}</span>
+                <span class="bc-modal__coin-sub">{{ '%.8f'|format(balance_qty) }} {{ c.symbol }} verfügbar</span>
+              </span>
+              <span class="bc-modal__coin-balance">
+                <span class="bc-amount" data-bc-balance="€{{ '%.2f'|format(balance_eur) }}">€{{ '%.2f'|format(balance_eur) }}</span>
+              </span>
+              <svg class="bc-modal__coin-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       // profile dropdown

