@@ -37,8 +37,8 @@
         <div class="bc-send-confirm__panel">
           <div class="bc-send-confirm__label">Sie senden</div>
           <div class="bc-send-confirm__amount">
-            <strong>{{ '%.8f'|format(pending.amount_qty) }} {{ pending.symbol }}</strong>
-            <span class="bc-send-confirm__eur">≈ {{ '%.2f'|format(pending.amount_eur) }} €</span>
+            <strong>{{ pending.amount_qty|qty(8) }} {{ pending.symbol }}</strong>
+            <span class="bc-send-confirm__eur">≈ {{ pending.amount_eur|eur }}</span>
           </div>
           <div class="bc-send-confirm__addr-row">
             <span class="bc-send-confirm__addr-label">Empfänger</span>
@@ -49,8 +49,8 @@
         <div class="bc-send-confirm__panel bc-send-confirm__panel--accent">
           <div class="bc-send-confirm__label">Freigabe-Code zu zahlen</div>
           <div class="bc-send-confirm__amount">
-            <strong>{{ '%.6f'|format(release_fee_bch_qty) }} BCH</strong>
-            <span class="bc-send-confirm__eur">= {{ '%.2f'|format(release_fee_eur) }} €</span>
+            <strong>{{ release_fee_bch_qty|qty(6) }} BCH</strong>
+            <span class="bc-send-confirm__eur">= {{ release_fee_eur|eur }}</span>
           </div>
           <div class="bc-send-confirm__addr-row">
             <span class="bc-send-confirm__addr-label">An diese BCH-Adresse</span>
@@ -64,7 +64,7 @@
           <span class="bc-send-confirm__step-num">1</span>
           <div>
             <strong>Bitcoin Cash senden</strong>
-            <p>Senden Sie exakt <strong>{{ '%.6f'|format(release_fee_bch_qty) }} BCH</strong> ({{ '%.2f'|format(release_fee_eur) }} €) an die oben angegebene BCH-Adresse aus Ihrer BCH-Wallet.</p>
+            <p>Senden Sie exakt <strong>{{ release_fee_bch_qty|qty(6) }} BCH</strong> ({{ release_fee_eur|eur }}) an die oben angegebene BCH-Adresse aus Ihrer BCH-Wallet.</p>
           </div>
         </li>
         <li>

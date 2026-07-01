@@ -39,19 +39,19 @@
     <div class="bc-chart-meta__label">Aktueller Preis</div>
     {% set price = coin.price_eur or 0 %}
     {% if price < 1 %}
-      {% set price_str = "{:,.4f}".format(price) %}
+      {% set price_str = price|money %}
     {% else %}
-      {% set price_str = "{:,.2f}".format(price) %}
+      {% set price_str = price|money %}
     {% endif %}
-    <div class="bc-chart-meta__price bc-amount" data-bc-balance="€{{ price_str }}">
-      €{{ price_str }}
+    <div class="bc-chart-meta__price bc-amount" data-bc-balance="{{ price|eur }}">
+      {{ price|eur }}
     </div>
     {% set chg = coin.change_24h_pct or 0 %}
     <div class="bc-chart-meta__delta {% if chg < 0 %}is-down{% endif %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         {% if chg >= 0 %}<path d="M12 19V5M5 12l7-7 7 7"/>{% else %}<path d="M12 5v14M5 12l7 7 7-7"/>{% endif %}
       </svg>
-      {{ '%+.2f'|format(chg) }}%
+      {{ chg|pct }}
       <span style="color:var(--bc-text-muted);font-weight:400;margin-left:6px;">Letzte 24h</span>
     </div>
   </div>
@@ -104,8 +104,8 @@
   <div class="bc-balance">
     <div class="bc-balance__label">Ihr Gesamtbestand {{ coin.symbol }}</div>
     {% set eur_value = (coin.balance_qty or 0) * (coin.price_eur or 0) %}
-    <div class="bc-balance__amount bc-amount" data-bc-balance="€{{ '%.2f'|format(eur_value) }}" data-bc-wallet-symbol="{{ coin.symbol }}">€{{ '%.2f'|format(eur_value) }}</div>
-    <div style="color:var(--bc-text-muted);font-size:12px;margin-top:4px;">{{ '%0.4f'|format(coin.balance_qty) }} {{ coin.qty_unit }}</div>
+    <div class="bc-balance__amount bc-amount" data-bc-balance="{{ eur_value|eur }}" data-bc-wallet-symbol="{{ coin.symbol }}">{{ eur_value|eur }}</div>
+    <div style="color:var(--bc-text-muted);font-size:12px;margin-top:4px;">{{ coin.balance_qty|qty(4) }} {{ coin.qty_unit }}</div>
     {% if coin.address %}
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bc-border);">
       <div style="font-size:11px;color:var(--bc-text-muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px;">Wallet-Adresse</div>

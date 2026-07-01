@@ -135,8 +135,8 @@
       var eur = Number(w.balance_eur || 0);
       var qty = Number(w.balance_qty || 0);
       var qtyUnit = w.qty_unit || sym;
-      var eurTxt = "€" + eur.toFixed(2);
-      var qtyTxt = "(" + Math.round(qty * 10000) / 10000 + " " + qtyUnit + ")";
+      var eurTxt = fmtEur(eur);
+      var qtyTxt = "(" + fmtQty(qty, 4) + " " + qtyUnit + ")";
       if (el.dataset.bcBalance !== undefined || el.classList.contains("bc-amount")) {
         el.dataset.bcBalance = eurTxt;
         el.textContent = eurTxt;
@@ -148,7 +148,7 @@
     // Update net-worth element if present
     var net = document.querySelector("[data-bc-networth]");
     if (net && typeof data.networth !== "undefined") {
-      var t = "€" + Number(data.networth).toFixed(2);
+      var t = fmtEur(Number(data.networth));
       net.dataset.bcBalance = t;
       net.textContent = t;
     }
@@ -168,7 +168,7 @@
         + '</div><div class="bc-row-main__sub">'
         + escapeHtml(String(r.ts || ""))
         + '</div></div></div>'
-        + '<div class="bc-row-aside__amount">€' + Number(r.amount_eur || 0).toFixed(2) + '</div>'
+        + '<div class="bc-row-aside__amount">' + fmtEur(Number(r.amount_eur || 0)) + '</div>'
         + '</div>';
     }).join("");
   }
@@ -326,13 +326,35 @@
   }
 
   function fmtEur(n) {
-    return "€" + (Math.round((n || 0) * 100) / 100)
-      .toFixed(2).replace(".", ",");
+    if (n === null || n === undefined || n === "" || n !== n) return "€";
+    var num = Number(n);
+    if (isNaN(num)) return String(n);
+    var sign = num < 0 ? "−" : "";
+    var abs = Math.abs(num);
+    var rounded = Math.round(abs * 100) / 100;
+    var s = rounded.toFixed(2);
+    // German format: 1234567.89 → 1.234.567,89
+    var parts = s.split(".");
+    var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    var decPart = (parts[1] || "00").padEnd(2, "0");
+    return sign + intPart + "," + decPart + " €";
+  }
+  function fmtMoney(n) {
+    return fmtEur(n).replace(/ €$/, "");
   }
   function fmtQty(n, decimals) {
     if (typeof decimals !== "number") decimals = 8;
-    return (Math.round((n || 0) * Math.pow(10, decimals)) / Math.pow(10, decimals))
-      .toFixed(decimals).replace(/\.?0+$/, "");
+    if (n === null || n === undefined || n === "" || n !== n) return "0";
+    var num = Number(n);
+    if (isNaN(num)) return String(n);
+    var sign = num < 0 ? "−" : "";
+    var abs = Math.abs(num);
+    var rounded = Math.round(abs * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    var s = rounded.toFixed(decimals);
+    var parts = s.split(".");
+    var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    var decPart = parts[1] || "";
+    return sign + intPart + (decPart ? "," + decPart : "");
   }
 
   function updateSendDisplay() {

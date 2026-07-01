@@ -86,8 +86,8 @@
           <td>{{ u.name or '—' }}</td>
           <td><span class="admin-cell-date">{{ (u.created_at or '')[:10] or '—' }}</span></td>
           <td><span class="admin-cell-date">{{ (u.last_login or '')[:10] or '—' }}</span></td>
-          <td class="num">{{ '%.4f'|format(meta.btc_qty) }}</td>
-          <td class="num">€{{ '{:,.2f}'.format(meta.btc_eur) }}</td>
+          <td class="num">{{ meta.btc_qty|qty(4) }}</td>
+          <td class="num">{{ meta.btc_eur|eur }}</td>
           <td>
             <a class="admin-btn admin-btn--ghost admin-btn--small" href="{{ url_for('admin_user_detail', email=u.email) }}">Öffnen</a>
           </td>

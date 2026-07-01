@@ -38,8 +38,8 @@
       <div class="bc-row-main__name">{{ w.name }}</div>
     </div>
     <div class="bc-row-aside">
-      <div class="bc-row-aside__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(w.balance_eur) }}" data-bc-wallet-symbol="{{ w.symbol }}">€{{ '%0.2f'|format(w.balance_eur) }}</div>
-      <div class="bc-row-aside__qty" data-bc-wallet-qty>{{ '%0.4f'|format(w.balance_qty) }} {{ w.qty_unit }}</div>
+      <div class="bc-row-aside__amount bc-amount" data-bc-balance="{{ w.balance_eur|eur }}" data-bc-wallet-symbol="{{ w.symbol }}">{{ w.balance_eur|eur }}</div>
+      <div class="bc-row-aside__qty" data-bc-wallet-qty>{{ w.balance_qty|qty(4) }} {{ w.qty_unit }}</div>
     </div>
   </a>
   {% else %}

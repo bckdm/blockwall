@@ -56,6 +56,90 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB upload cap
 
+
+# ----------------------------------------------------------------------------
+# Jinja filters — German number formatting
+#   1.234,56 €   not   €1,234.56
+# ----------------------------------------------------------------------------
+import re as _re
+
+def _de_fmt(value, decimals):
+    """Format a number with German thousands (period) and decimals (comma)."""
+    if value is None or value == "":
+        return ""
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if n != n:  # NaN
+        return ""
+    # Negative → keep sign in front, drop the minus prefix from the formatted part
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    s = f"{n:,.{decimals}f}"  # uses US format → 1,234.56
+    # Swap , and . → 1.234,56
+    s = s.replace(",", "§").replace(".", ",").replace("§", ".")
+    return f"{sign}{s}"
+
+
+@app.template_filter("eur")
+def _eur(value):
+    """EUR amount, German format. 1234567.89 → 1.234.567,89 €"""
+    return f"{_de_fmt(value, 2)} €"
+
+
+@app.template_filter("money")
+def _money(value):
+    """Same as `eur` but without the € suffix. 1234567.89 → 1.234.567,89"""
+    return _de_fmt(value, 2)
+
+
+@app.template_filter("eur_signed")
+def _eur_signed(value):
+    """EUR with sign prefix. -1234.56 → −1.234,56 €"""
+    if value is None or value == "":
+        return ""
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    sign = "−" if n < 0 else ("" if n == 0 else "+")
+    n = abs(n)
+    s = f"{n:,.2f}".replace(",", "§").replace(".", ",").replace("§", ".")
+    return f"{sign}{s} €"
+
+
+@app.template_filter("qty")
+def _qty(value, decimals=8):
+    """Crypto quantity, German format. 0.025 → 0,02500000"""
+    return _de_fmt(value, int(decimals))
+
+
+@app.template_filter("pct")
+def _pct(value, decimals=2):
+    """Percentage with sign. 1.84 → +1,84 %"""
+    if value is None or value == "":
+        return ""
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    sign = "−" if n < 0 else ("" if n == 0 else "+")
+    n = abs(n)
+    s = f"{n:,.{int(decimals)}f}".replace(",", "§").replace(".", ",").replace("§", ".")
+    return f"{sign}{s} %"
+
+
+@app.template_filter("addr")
+def _addr(value):
+    """Crypto address — ellipsize the middle. 'bc1qabc...xyz' → 'bc1qabc…xyz'"""
+    if not value:
+        return "—"
+    s = str(value)
+    if len(s) <= 18:
+        return s
+    return s[:10] + "…" + s[-6:]
+
 os.makedirs(DATA_DIR, exist_ok=True)
 
 

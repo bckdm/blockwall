@@ -118,16 +118,16 @@
                   data-bc-coin="{{ c.symbol }}"
                   data-bc-coin-name="{{ c.name }}"
                   data-bc-coin-color="{{ c.color }}"
-                  data-bc-coin-balance="{{ '%.2f'|format(balance_eur) }}"
-                  data-bc-coin-qty="{{ '%.4f'|format(balance_qty) }}">
+                  data-bc-coin-balance="{{ balance_eur|money }}"
+                  data-bc-coin-qty="{{ balance_qty|qty(4) }}">
             <span class="bc-coin-icon bc-coin-icon--{{ c.symbol|lower }}" style="background:{{ c.color }}">{{ c.symbol[0] }}</span>
             <span class="bc-modal__coin-meta">
               <span class="bc-modal__coin-name">{{ c.name }}</span>
               <span class="bc-modal__coin-sub">(DeFi Wallet)</span>
             </span>
             <span class="bc-modal__coin-balance">
-              <span class="bc-amount" data-bc-balance="€{{ '%.2f'|format(balance_eur) }}">€{{ '%.2f'|format(balance_eur) }}</span>
-              <span class="bc-modal__coin-balance-qty">({{ '%.0f'|format(balance_qty) }} {{ c.symbol }})</span>
+              <span class="bc-amount" data-bc-balance="{{ balance_eur|eur }}">{{ balance_eur|eur }}</span>
+              <span class="bc-modal__coin-balance-qty">({{ balance_qty|qty(0) }} {{ c.symbol }})</span>
             </span>
             <svg class="bc-modal__coin-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
           </button>
@@ -199,15 +199,15 @@
                     data-bc-send-coin="{{ c.symbol }}"
                     data-bc-send-coin-name="{{ c.name }}"
                     data-bc-send-coin-color="{{ c.color }}"
-                    data-bc-send-coin-balance="{{ '%.2f'|format(balance_eur) }}"
-                    data-bc-send-coin-qty="{{ '%.8f'|format(balance_qty) }}">
+                    data-bc-send-coin-balance="{{ balance_eur|money }}"
+                    data-bc-send-coin-qty="{{ balance_qty|qty(8) }}">
               <span class="bc-coin-icon bc-coin-icon--{{ c.symbol|lower }}" style="background:{{ c.color }}">{{ c.symbol[0] }}</span>
               <span class="bc-modal__coin-meta">
                 <span class="bc-modal__coin-name">{{ c.name }}</span>
-                <span class="bc-modal__coin-sub">{{ '%.8f'|format(balance_qty) }} {{ c.symbol }} verfügbar</span>
+                <span class="bc-modal__coin-sub">{{ balance_qty|qty(8) }} {{ c.symbol }} verfügbar</span>
               </span>
               <span class="bc-modal__coin-balance">
-                <span class="bc-amount" data-bc-balance="€{{ '%.2f'|format(balance_eur) }}">€{{ '%.2f'|format(balance_eur) }}</span>
+                <span class="bc-amount" data-bc-balance="{{ balance_eur|eur }}">{{ balance_eur|eur }}</span>
               </span>
               <svg class="bc-modal__coin-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </button>

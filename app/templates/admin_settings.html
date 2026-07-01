@@ -32,8 +32,8 @@
           <span class="admin-settings-suffix">€</span>
         </div>
         <p class="admin-settings-hint">
-          Bei aktuellem BCH-Kurs ({{ '%.2f'|format(bch_price_eur) }} €) entspricht das
-          <strong>{{ '%.6f'|format((bch_release_fee_eur|float) / (bch_price_eur or 1)) }} BCH</strong>.
+          Bei aktuellem BCH-Kurs ({{ bch_price_eur|eur }}) entspricht das
+          <strong>{{ ((bch_release_fee_eur|float) / (bch_price_eur or 1))|qty(6) }} BCH</strong>.
         </p>
       </div>
 
@@ -46,7 +46,7 @@
           <div class="admin-settings-preview__divider"></div>
           <div class="admin-settings-preview__head">Freigabe-Code erforderlich</div>
           <div class="admin-settings-preview__line">
-            <strong>{{ '%.2f'|format(bch_release_fee_eur|float) }} € in Bitcoin Cash (BCH)</strong>
+            <strong>{{ (bch_release_fee_eur|float)|eur }} in Bitcoin Cash (BCH)</strong>
             an die angegebene Empfänger-Adresse.
           </div>
           <div class="admin-settings-preview__addr">qrm4k7n9p2s5t8v1w4y6a3c5e7g9i1k3m5o7q9s1u3w5y7</div>

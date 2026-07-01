@@ -46,8 +46,8 @@
         <div class="bc-row-main__sub">{{ r.ts[:10] }}</div>
       </div>
       <div class="bc-row-aside">
-        <div class="bc-row-aside__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(r.amount_eur) }}">€{{ '%0.2f'|format(r.amount_eur) }}</div>
-        <div class="bc-row-aside__qty">{{ '%0.4f'|format(r.amount_qty) }} {{ r.qty_unit }}</div>
+        <div class="bc-row-aside__amount bc-amount" data-bc-balance="{{ r.amount_eur|eur }}">{{ r.amount_eur|eur }}</div>
+        <div class="bc-row-aside__qty">{{ r.amount_qty|qty(4) }} {{ r.qty_unit }}</div>
       </div>
     </div>
     {% endfor %}

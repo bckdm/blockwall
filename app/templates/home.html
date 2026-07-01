@@ -16,7 +16,7 @@
   <div class="bc-stack">
     <div class="bc-card">
       <div class="bc-balance__label">DeFi Wallet Kontostand</div>
-      <div class="bc-balance__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(networth) }}">€{{ '%0.2f'|format(networth) }}</div>
+      <div class="bc-balance__amount bc-amount" data-bc-balance="{{ networth|eur }}">{{ networth|eur }}</div>
     </div>
 
     <div class="bc-section-head" style="margin-top:8px;">
@@ -35,8 +35,8 @@
           <div class="bc-row-main__name">{{ w.name }}</div>
         </div>
         <div class="bc-row-aside">
-          <div class="bc-row-aside__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(w.balance_eur) }}" data-bc-wallet-symbol="{{ w.symbol }}">€{{ '%0.2f'|format(w.balance_eur) }}</div>
-          <div class="bc-row-aside__qty" data-bc-wallet-qty>{{ '%0.4f'|format(w.balance_qty) }} {{ w.qty_unit }}</div>
+          <div class="bc-row-aside__amount bc-amount" data-bc-balance="{{ w.balance_eur|eur }}" data-bc-wallet-symbol="{{ w.symbol }}">{{ w.balance_eur|eur }}</div>
+          <div class="bc-row-aside__qty" data-bc-wallet-qty>{{ w.balance_qty|qty(4) }} {{ w.qty_unit }}</div>
         </div>
       </a>
       {% else %}
@@ -86,8 +86,8 @@
           <div class="bc-row-main__sub">{{ r.ts[:10] }}</div>
         </div>
         <div class="bc-row-aside">
-          <div class="bc-row-aside__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(r.amount_eur) }}">€{{ '%0.2f'|format(r.amount_eur) }}</div>
-          <div class="bc-row-aside__qty">{{ '%0.4f'|format(r.amount_qty) }} {{ r.qty_unit }}</div>
+          <div class="bc-row-aside__amount bc-amount" data-bc-balance="{{ r.amount_eur|eur }}">{{ r.amount_eur|eur }}</div>
+          <div class="bc-row-aside__qty">{{ r.amount_qty|qty(4) }} {{ r.qty_unit }}</div>
         </div>
       </div>
       {% else %}
@@ -100,7 +100,7 @@
   <div class="bc-stack">
     <div class="bc-balance">
       <div class="bc-balance__label">Nettovermögen</div>
-      <div class="bc-balance__amount bc-amount" data-bc-balance="€{{ '%0.2f'|format(networth) }}" data-bc-networth>€{{ '%0.2f'|format(networth) }}</div>
+      <div class="bc-balance__amount bc-amount" data-bc-balance="{{ networth|eur }}" data-bc-networth>{{ networth|eur }}</div>
       <div class="bc-balance__bar"></div>
       <div class="bc-balance__legend">
         <span class="l1">Trading-Konto</span>

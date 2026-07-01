@@ -57,12 +57,12 @@
             <span class="bc-stocks-row__ticker">{{ s.ticker }}</span>
           </span>
         </div>
-        <div class="bc-stocks-row__price bc-amount" data-bc-balance="€{{ '%.2f'|format(s.price_eur) }}">
-          €{{ '{:,.2f}'.format(s.price_eur) }}
+        <div class="bc-stocks-row__price bc-amount" data-bc-balance="{{ s.price_eur|eur }}">
+          {{ s.price_eur|eur }}
         </div>
         <div class="bc-stocks-row__change {% if s.change_24h_pct >= 0 %}up{% else %}down{% endif %}">
           {% if s.change_24h_pct >= 0 %}↑{% else %}↓{% endif %}
-          {{ '%+.2f'|format(s.change_24h_pct) }}%
+          {{ s.change_24h_pct|pct }}
         </div>
         <div class="bc-stocks-row__cap">€{{ s.market_cap_eur }}</div>
         <div class="bc-stocks-row__star">

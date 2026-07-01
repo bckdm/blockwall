@@ -24,7 +24,7 @@
   <div class="admin-user-hero__stats">
     <div>
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Nettovermögen</div>
-      <div class="admin-stat-card__value" style="font-size:22px;">€{{ '{:,.2f}'.format(networth_eur) }}</div>
+      <div class="admin-stat-card__value" style="font-size:22px;">{{ networth_eur|eur }}</div>
     </div>
     <div>
       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Erstellt</div>
@@ -89,7 +89,7 @@
                 <input class="admin-input admin-input--num" type="number" step="0.00000001" name="balance_qty"
                        value="{{ w.balance_qty or 0 }}">
             </td>
-            <td class="num">€{{ '{:,.2f}'.format(eur) }}</td>
+            <td class="num">{{ eur|eur }}</td>
             <td>
                 <input class="admin-input admin-input--addr" type="text" name="address"
                        value="{{ w.address or '' }}" placeholder="Wallet-Adresse">
@@ -125,7 +125,7 @@
               <tr>
                 <td class="num">{{ (a.ts or '')[:10] or '—' }}</td>
                 <td>{{ a.label }}</td>
-                <td class="num">€{{ '{:,.2f}'.format(a.amount_eur or 0) }}</td>
+                <td class="num">{{ (a.amount_eur or 0)|eur }}</td>
               </tr>
             {% endfor %}
           </tbody>
