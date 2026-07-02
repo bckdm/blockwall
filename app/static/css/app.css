@@ -69,14 +69,17 @@ a:hover { color: var(--bc-link-hover); text-decoration: underline; }
 }
 .bc-header__left {
   display: flex; align-items: center; gap: 18px;
-  min-width: calc(var(--side-w) + 16px);
+  min-width: 347px;
 }
 .bc-header__brand {
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 18px; color: #fff;
   letter-spacing: 0.2px;
 }
-.bc-header__brand img { width: 26px; height: 26px; display: block; }
+.bc-header__brand img { display: block; }
+.bc-header__brand.bc-header__brand--has-logo {
+  flex: 0 0 auto;
+}
 .bc-header__title {
   font-size: 18px; font-weight: 600;
   position: relative; padding-bottom: 4px;
@@ -442,10 +445,11 @@ a:hover { color: var(--bc-link-hover); text-decoration: underline; }
   padding: 24px 16px; position: relative; z-index: 2;
 }
 .bc-login__logo {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
   font-size: 22px; font-weight: 700; margin-top: 32px; margin-bottom: 24px;
 }
-.bc-login__logo img { width: 30px; height: 30px; }
+.bc-login__logo img { display: block; }
 .bc-login__card {
   width: 100%; max-width: 420px; background: #fff; color: var(--bc-text);
   border-radius: var(--radius); padding: 28px 28px 24px; box-shadow: var(--shadow);
@@ -758,4 +762,16 @@ a:hover { color: var(--bc-link-hover); text-decoration: underline; }
 .admin-settings-preview__divider {
   height: 1px; background: #f3d57c;
   margin: 10px -16px;
+}
+
+/* =============================================================================
+   Brand logo — fixed 331×49 everywhere it appears
+   ============================================================================= */
+.bc-logo {
+  width: 331px !important;
+  height: 49px !important;
+  max-width: 331px !important;
+  max-height: 49px !important;
+  display: block;
+  object-fit: contain;
 }

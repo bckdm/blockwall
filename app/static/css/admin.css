@@ -23,7 +23,7 @@
   --adm-shadow-sm: 0 1px 2px rgba(15, 17, 30, 0.04);
   --adm-shadow:    0 1px 3px rgba(15, 17, 30, 0.05), 0 1px 2px rgba(15, 17, 30, 0.04);
   --adm-shadow-lg: 0 10px 30px -10px rgba(15, 17, 30, 0.15);
-  --adm-sidebar-w: 248px;
+  --adm-sidebar-w: 363px;
   --adm-topbar-h:  72px;
 }
 
@@ -55,12 +55,13 @@
 }
 .admin-sidebar__brand {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 12px;
-  padding: 22px 22px 18px;
+  padding: 22px 16px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-.admin-sidebar__brand img { width: 30px; height: 30px; }
+.admin-sidebar__brand img { display: block; }
 .admin-sidebar__brand-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
 .admin-sidebar__brand-sub { font-size: 11px; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
 
