@@ -669,6 +669,22 @@ STOCKS = [
 ]
 
 
+# Deterministic pseudo sparkline for each ticker (24 points over a 0..100 viewbox)
+# Direction follows the 24h change so up-trending assets have an upward line.
+def _sparkline(ticker, change_pct):
+    h = abs(hash("spark::" + ticker)) % 1000
+    base = [(h * (i + 7)) % 97 for i in range(24)]
+    if change_pct >= 0:
+        base = sorted(base)
+    else:
+        base = sorted(base, reverse=True)
+    return " ".join(f"{i*4.35:.1f},{30 - v*0.28:.1f}" for i, v in enumerate(base))
+
+
+for _s in STOCKS:
+    _s["sparkline"] = _sparkline(_s["ticker"], _s["change_24h_pct"])
+
+
 # ----------------------------------------------------------------------------
 # Public routes
 # ----------------------------------------------------------------------------

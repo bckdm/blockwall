@@ -4,73 +4,92 @@
 
 {% block content %}
 <section class="bc-stocks">
-  <header class="bc-stocks__head">
-    <div class="bc-stocks__tabs" role="tablist">
-      <button class="bc-stocks__tab active" type="button" role="tab" aria-selected="true" data-bc-stocks-tab="discover">Entdecken</button>
-      <button class="bc-stocks__tab" type="button" role="tab" aria-selected="false" data-bc-stocks-tab="mine">Meine Aktien</button>
+  <header class="bc-page-head">
+    <div>
+      <div class="bc-page-eyebrow">Märkte</div>
+      <h1 class="bc-page-title">Aktien</h1>
+      <p class="bc-page-sub">Tokenisierte Vermögenswerte · 24/7 handelbar</p>
     </div>
-    <div class="bc-stocks__head-right">
-      <button class="bc-icon-btn bc-stocks__info" type="button" title="Was sind tokenisierte Aktien?" aria-label="Info">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      </button>
-      <div class="bc-stocks__callout">
-        <span class="bc-stocks__callout-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 22v-6M2 12h6M22 12h-6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4"/></svg>
-        </span>
-        <div>
-          <div class="bc-stocks__callout-title">Krypto-Assets jetzt verfügbar</div>
-          <div class="bc-stocks__callout-sub">Handel Token 24/7.</div>
+    <div class="bc-stocks__hero-stats">
+      <div class="bc-stocks__hero-stat">
+        <div class="bc-stocks__hero-stat-label">Assets</div>
+        <div class="bc-stocks__hero-stat-value">{{ stocks|length }}</div>
+      </div>
+      <div class="bc-stocks__hero-stat">
+        <div class="bc-stocks__hero-stat-label">Top Performer</div>
+        <div class="bc-stocks__hero-stat-value">
+          {% set top = (stocks|sort(attribute='change_24h_pct', reverse=true)|first) %}
+          {{ top.ticker }} <span style="color:#0e9f6e;font-size:14px;">{{ top.change_24h_pct|pct }}</span>
+        </div>
+      </div>
+      <div class="bc-stocks__hero-stat">
+        <div class="bc-stocks__hero-stat-label">Verlierer</div>
+        <div class="bc-stocks__hero-stat-value">
+          {% set bot = (stocks|sort(attribute='change_24h_pct')|first) %}
+          {{ bot.ticker }} <span style="color:#d63a3a;font-size:14px;">{{ bot.change_24h_pct|pct }}</span>
         </div>
       </div>
     </div>
   </header>
 
+  <div class="bc-tabs bc-stocks__tabs" role="tablist">
+    <button class="bc-tab is-active" type="button" role="tab" aria-selected="true" data-bc-stocks-tab="discover">Entdecken</button>
+    <button class="bc-tab" type="button" role="tab" aria-selected="false" data-bc-stocks-tab="mine">Meine Aktien</button>
+  </div>
+
   <div class="bc-stocks__bar">
     <div class="bc-stocks__search-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="bc-stocks__search-icon"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input class="bc-stocks__search" id="bc-stocks-search" type="search" placeholder="Assets suchen" autocomplete="off">
+      <input class="bc-stocks__search" id="bc-stocks-search" type="search" placeholder="Asset oder Ticker suchen" autocomplete="off">
     </div>
-    <button class="bc-stocks__filter" type="button" title="Filter" aria-label="Filter">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
-      Filter
-    </button>
+    <div class="bc-stocks__filter-chips">
+      <button class="bc-stocks__chip active" type="button" data-bc-stocks-filter="all">Alle</button>
+      <button class="bc-stocks__chip" type="button" data-bc-stocks-filter="gainers">Gewinner</button>
+      <button class="bc-stocks__chip" type="button" data-bc-stocks-filter="losers">Verlierer</button>
+      <button class="bc-stocks__chip" type="button" data-bc-stocks-filter="large">Large Cap</button>
+    </div>
   </div>
 
-  <div class="bc-stocks-table">
-    <div class="bc-stocks-table__head">
-      <div class="bc-stocks-table__col bc-stocks-table__col--name">Name <span class="bc-stocks-table__sort">▲</span></div>
-      <div class="bc-stocks-table__col bc-stocks-table__col--price">Preis</div>
-      <div class="bc-stocks-table__col bc-stocks-table__col--change">24h</div>
-      <div class="bc-stocks-table__col bc-stocks-table__col--cap">Marktkapitalisierung</div>
-      <div class="bc-stocks-table__col bc-stocks-table__col--star"></div>
-    </div>
-    <div class="bc-stocks-table__body" id="bc-stocks-body">
-      {% for s in stocks %}
-      <a class="bc-stocks-row" href="{{ url_for('wallet_currency', sym=s.ticker) }}"
-         data-bc-stock-row
-         data-name="{{ s.name }} {{ s.ticker }}"
-         data-ticker="{{ s.ticker }}">
-        <div class="bc-stocks-row__name">
-          <span class="bc-stocks-row__logo" style="background:{{ s.color }};">{{ s.ticker[0] }}</span>
-          <span class="bc-stocks-row__text">
-            <span class="bc-stocks-row__title">{{ s.name }}</span>
-            <span class="bc-stocks-row__ticker">{{ s.ticker }}</span>
-          </span>
-        </div>
-        <div class="bc-stocks-row__price bc-amount" data-bc-balance="{{ s.price_eur|eur }}">
-          {{ s.price_eur|eur }}
-        </div>
-        <div class="bc-stocks-row__change {% if s.change_24h_pct >= 0 %}up{% else %}down{% endif %}">
+  <div class="bc-stocks-grid" id="bc-stocks-body">
+    {% for s in stocks %}
+    <a class="bc-stocks-card"
+       href="{{ url_for('wallet_currency', sym=s.ticker) }}"
+       data-bc-stock-row
+       data-name="{{ s.name }} {{ s.ticker }}"
+       data-ticker="{{ s.ticker }}"
+       data-change="{{ s.change_24h_pct }}">
+      <div class="bc-stocks-card__head">
+        <span class="bc-stocks-card__logo" style="background:{{ s.color }};">{{ s.ticker[0] }}</span>
+        <button class="bc-stocks-card__star" type="button" title="Zur Watchlist hinzufügen" aria-label="Watchlist">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+        </button>
+      </div>
+      <div class="bc-stocks-card__name">
+        <div class="bc-stocks-card__title">{{ s.name }}</div>
+        <div class="bc-stocks-card__ticker">{{ s.ticker }}</div>
+      </div>
+      <div class="bc-stocks-card__chart">
+        <svg viewBox="0 0 100 32" preserveAspectRatio="none" class="bc-stocks-card__spark {% if s.change_24h_pct >= 0 %}up{% else %}down{% endif %}">
+          <polyline points="{{ s.sparkline }}" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <div class="bc-stocks-card__foot">
+        <div class="bc-stocks-card__price bc-amount" data-bc-balance="{{ s.price_eur|eur }}">{{ s.price_eur|eur }}</div>
+        <div class="bc-stocks-card__change {% if s.change_24h_pct >= 0 %}up{% else %}down{% endif %}">
           {% if s.change_24h_pct >= 0 %}↑{% else %}↓{% endif %}
           {{ s.change_24h_pct|pct }}
         </div>
-        <div class="bc-stocks-row__cap">€{{ s.market_cap_eur }}</div>
-        <div class="bc-stocks-row__star">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
-        </div>
-      </a>
-      {% endfor %}
-    </div>
+      </div>
+      <div class="bc-stocks-card__meta">
+        <span class="bc-stocks-card__meta-label">Mkt Cap</span>
+        <span class="bc-stocks-card__meta-value">{{ s.market_cap_eur }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="bc-stocks__empty" id="bc-stocks-empty" hidden>
+    Keine Assets passen zu deiner Suche.
   </div>
 </section>
 {% endblock %}
@@ -80,24 +99,46 @@
   (function () {
     var search = document.getElementById("bc-stocks-search");
     var body = document.getElementById("bc-stocks-body");
-    if (search && body) {
-      search.addEventListener("input", function () {
-        var q = search.value.trim().toLowerCase();
-        body.querySelectorAll("[data-bc-stock-row]").forEach(function (row) {
-          var n = (row.dataset.name || "").toLowerCase();
-          var t = (row.dataset.ticker || "").toLowerCase();
-          row.style.display = (!q || n.indexOf(q) !== -1 || t.indexOf(q) !== -1) ? "" : "none";
-        });
+    var empty = document.getElementById("bc-stocks-empty");
+    if (!body) return;
+    var rows = body.querySelectorAll("[data-bc-stock-row]");
+
+    function applyFilter() {
+      var q = (search && search.value || "").trim().toLowerCase();
+      var active = document.querySelector(".bc-stocks__chip.active");
+      var mode = active ? active.dataset.bcStocksFilter : "all";
+      var visible = 0;
+      rows.forEach(function (row) {
+        var n = (row.dataset.name || "").toLowerCase();
+        var ch = parseFloat(row.dataset.change || "0");
+        var matchSearch = !q || n.indexOf(q) !== -1;
+        var matchFilter = (mode === "all") ||
+                          (mode === "gainers" && ch >= 0) ||
+                          (mode === "losers"   && ch <  0) ||
+                          (mode === "large"    && n.indexOf("bitcoin") === -1 && n.indexOf("ethereum") === -1);
+        var show = matchSearch && matchFilter;
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
       });
+      if (empty) empty.hidden = visible > 0;
     }
-    // tab toggling — visual only
+
+    if (search) search.addEventListener("input", applyFilter);
+    document.querySelectorAll("[data-bc-stocks-filter]").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        document.querySelectorAll(".bc-stocks__chip").forEach(function (c) { c.classList.remove("active"); });
+        chip.classList.add("active");
+        applyFilter();
+      });
+    });
+
     document.querySelectorAll("[data-bc-stocks-tab]").forEach(function (tab) {
       tab.addEventListener("click", function () {
         document.querySelectorAll("[data-bc-stocks-tab]").forEach(function (t) {
-          t.classList.remove("active");
+          t.classList.remove("is-active");
           t.setAttribute("aria-selected", "false");
         });
-        tab.classList.add("active");
+        tab.classList.add("is-active");
         tab.setAttribute("aria-selected", "true");
       });
     });
