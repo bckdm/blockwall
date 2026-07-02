@@ -1,6 +1,6 @@
 {% extends "_layout.html" %}
 {% set active_page = 'dex' %}
-{% block title %}DEX{% endblock %}
+{% block title %}DEX · Tausch{% endblock %}
 
 {% block content %}
 <section class="bc-dex">
@@ -83,10 +83,15 @@
         <span id="bc-dex-rate-text">1 ETH = 0,0370 BTC</span>
       </div>
 
-      <button class="bc-dex-submit" type="button" id="bc-dex-deposit" data-bc-open-modal="einzahlung">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6M5 20h14"/></svg>
-        <span>Einzahlung · Wallet aufladen</span>
-      </button>
+      <form method="post" action="{{ url_for('wallet_swap') }}" class="bc-dex-submit-form" id="bc-dex-submit-form">
+        <input type="hidden" name="from_sym" id="bc-dex-from-sym" value="">
+        <input type="hidden" name="to_sym"   id="bc-dex-to-sym"   value="">
+        <input type="hidden" name="amount_qty" id="bc-dex-submit-amount" value="0">
+        <button type="submit" class="bc-dex-submit" id="bc-dex-swap-submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>
+          <span>Tausch bestätigen</span>
+        </button>
+      </form>
 
       <p class="bc-dex-foot">
         Kurse werden in Echtzeit aus dem Order-Flow berechnet. Netzwerkgebühren sind im Wechselkurs enthalten.
@@ -125,12 +130,52 @@
       <section class="bc-dex-panel">
         <h3 class="bc-dex-panel__title">Wie funktioniert es?</h3>
         <ol class="bc-dex-steps">
-          <li>Asset auswählen, das Sie tauschen möchten.</li>
-          <li>Betrag eingeben — der Empfang wird automatisch berechnet.</li>
-          <li>Wallet aufladen, falls nötig, und Swap bestätigen.</li>
+          <li>Klicken Sie auf <strong>Auswählen</strong> oben und wählen Sie Ihren Quell-Coin.</li>
+          <li>Geben Sie die Menge ein — der Empfang wird live berechnet.</li>
+          <li>Klicken Sie auf <strong>Tausch bestätigen</strong> und zahlen Sie den BCH-Freigabe-Code.</li>
         </ol>
       </section>
     </aside>
+  </div>
+
+  {# ---------- Inline DEX coin picker modal (no cross-page state) ---------- #}
+  <div class="bc-modal" id="bc-dex-picker-modal" aria-hidden="true">
+    <div class="bc-modal__backdrop" data-bc-dex-picker-close="1"></div>
+    <div class="bc-modal__panel" role="dialog" aria-modal="true" aria-labelledby="bc-dex-picker-title">
+      <header class="bc-modal__head">
+        <h2 class="bc-modal__title" id="bc-dex-picker-title">Coin wählen</h2>
+        <button class="bc-icon-btn" data-bc-dex-picker-close="1" aria-label="Schließen" title="Schließen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+        </button>
+      </header>
+      <div class="bc-modal__search-wrap">
+        <svg class="bc-modal__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input class="bc-modal__search" id="bc-dex-picker-search" type="search" placeholder="Coin suchen" autocomplete="off">
+      </div>
+      <div class="bc-modal__list" id="bc-dex-picker-list">
+        {% for c in COINS %}
+        {% set w = (wallets|selectattr('symbol','equalto',c.symbol)|list|first) %}
+        {% set bal_qty = (w.balance_qty if w else 0) or 0 %}
+        {% set bal_eur = (w.balance_eur if w else 0) or 0 %}
+        <button type="button" class="bc-modal__coin"
+                data-bc-dex-coin="{{ c.symbol }}"
+                data-bc-dex-coin-name="{{ c.name }}"
+                data-bc-dex-coin-color="{{ c.color }}"
+                data-bc-dex-coin-balance="{{ bal_eur|money }}"
+                data-bc-dex-coin-qty="{{ bal_qty|qty(8) }}">
+          <span class="bc-coin-icon bc-coin-icon--{{ c.symbol|lower }}" style="background:{{ c.color }}">{{ c.symbol[0] }}</span>
+          <span class="bc-modal__coin-meta">
+            <span class="bc-modal__coin-name">{{ c.name }}</span>
+            <span class="bc-modal__coin-sub">{{ bal_qty|qty(8) }} {{ c.symbol }} verfügbar</span>
+          </span>
+          <span class="bc-modal__coin-balance">
+            <span class="bc-amount" data-bc-balance="{{ bal_eur|eur }}">{{ bal_eur|eur }}</span>
+          </span>
+          <svg class="bc-modal__coin-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}
@@ -185,8 +230,7 @@
       }
     }
 
-    function setBal(btn, sym) {
-      var target = btn.dataset.bcDexTarget;
+    function setBal(target, sym) {
       var el = document.getElementById(target === "from" ? "bc-dex-from-bal" : "bc-dex-to-bal");
       if (!el) return;
       if (!sym) { el.textContent = ""; return; }
@@ -226,7 +270,6 @@
         toEurEl.dataset.bcBalance = "€0,00";
       }
 
-      // Update rate label
       var rate = document.getElementById("bc-dex-rate");
       var rateText = document.getElementById("bc-dex-rate-text");
       if (fromSym && toSym && fromPrice && toPrice) {
@@ -237,22 +280,90 @@
         rate.hidden = true;
       }
 
+      // Pre-fill the submit form
+      var fromHidden = document.getElementById("bc-dex-from-sym");
+      var toHidden   = document.getElementById("bc-dex-to-sym");
+      var amtHidden  = document.getElementById("bc-dex-submit-amount");
+      if (fromHidden) fromHidden.value = fromSym;
+      if (toHidden)   toHidden.value   = toSym;
+      if (amtHidden)  amtHidden.value  = String(amtIn);
+
+      var submit = document.getElementById("bc-dex-swap-submit");
+      if (submit) submit.disabled = !(fromSym && toSym && amtIn > 0);
+
       window.dispatchEvent(new CustomEvent("bc:balances-updated"));
     }
 
+    /* -------- Inline picker modal (no cross-page state) -------- */
+    var pickerModal = document.getElementById("bc-dex-picker-modal");
+    var pickerSearch = document.getElementById("bc-dex-picker-search");
+    var pickerList   = document.getElementById("bc-dex-picker-list");
+    var pickerTarget = null;
+
+    function openPicker(target) {
+      pickerTarget = target;
+      if (!pickerModal) return;
+      pickerModal.classList.add("open");
+      pickerModal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      if (pickerSearch) { pickerSearch.value = ""; filterPicker(""); setTimeout(function () { pickerSearch.focus(); }, 50); }
+    }
+    function closePicker() {
+      if (!pickerModal) return;
+      pickerModal.classList.remove("open");
+      pickerModal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      pickerTarget = null;
+    }
+    function filterPicker(q) {
+      if (!pickerList) return;
+      q = (q || "").trim().toLowerCase();
+      pickerList.querySelectorAll(".bc-modal__coin").forEach(function (row) {
+        var n = (row.dataset.bcDexCoinName || "").toLowerCase();
+        var s = (row.dataset.bcDexCoin || "").toLowerCase();
+        row.style.display = (!q || (n + " " + s).indexOf(q) !== -1) ? "" : "none";
+      });
+    }
+
     document.querySelectorAll("[data-bc-dex-target]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        window.__bcDexTarget = btn.dataset.bcDexTarget;
-        window.openEinzahlungModal();
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openPicker(btn.dataset.bcDexTarget);
       });
     });
+    if (pickerModal) {
+      pickerModal.addEventListener("click", function (e) {
+        var t = e.target;
+        if (t && t.getAttribute && t.getAttribute("data-bc-dex-picker-close") === "1") closePicker();
+      });
+    }
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && pickerModal && pickerModal.classList.contains("open")) closePicker();
+    });
+    if (pickerSearch) pickerSearch.addEventListener("input", function () { filterPicker(pickerSearch.value); });
+    if (pickerList) {
+      pickerList.addEventListener("click", function (e) {
+        var row = e.target.closest(".bc-modal__coin");
+        if (!row) return;
+        var sym = String(row.dataset.bcDexCoin || "").toUpperCase();
+        if (!sym || !pickerTarget) return;
+        var btn = document.querySelector('[data-bc-dex-target="' + pickerTarget + '"]');
+        if (btn) {
+          setPicker(btn, sym);
+          setBal(pickerTarget, sym);
+        }
+        closePicker();
+        recalc();
+      });
+    }
 
     document.getElementById("bc-dex-swap").addEventListener("click", function () {
       var fromBtn = document.querySelector('[data-bc-dex-target="from"]');
       var toBtn   = document.querySelector('[data-bc-dex-target="to"]');
       var fs = fromBtn.dataset.bcCoin, ts = toBtn.dataset.bcCoin;
-      setPicker(fromBtn, ts); setBal(fromBtn, ts);
-      setPicker(toBtn, fs);   setBal(toBtn, fs);
+      setPicker(fromBtn, ts); setBal("from", ts);
+      setPicker(toBtn, fs);   setBal("to",   fs);
       recalc();
     });
 
@@ -262,18 +373,6 @@
       var btn = this;
       btn.classList.add("is-spinning");
       setTimeout(function () { btn.classList.remove("is-spinning"); recalc(); }, 600);
-    });
-
-    window.addEventListener("bc:coin-picked", function (e) {
-      var sym = e.detail && e.detail.symbol;
-      var target = window.__bcDexTarget || "from";
-      var btn = document.querySelector('[data-bc-dex-target="' + target + '"]');
-      if (btn) {
-        setPicker(btn, sym);
-        setBal(btn, sym);
-      }
-      window.__bcDexTarget = null;
-      recalc();
     });
 
     recalc();

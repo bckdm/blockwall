@@ -1,124 +1,291 @@
 {% extends '_layout.html' %}
 {% set active_page = 'assets' %}
-{% block title %}{{ coin.name }} ({{ coin.symbol }}){% endblock %}
+{% block title %}{{ coin.name }} ({{ coin.symbol }}) · Wallet{% endblock %}
 
 {% macro coin_icon(symbol) %}
   {% set s = symbol|upper %}
-  <span class="bc-coin-icon bc-coin-icon--{{ s|lower }}">
+  <span class="bc-coin-icon bc-coin-icon--{{ s|lower }}"
+        style="background:{{ COIN_BY_SYM[s].color if s in COIN_BY_SYM else '#888' }};">
     {% if s == 'TRX' %}TRX{% elif s == 'ETH' %}Ξ{% elif s == 'BTC' %}₿{% elif s == 'USDC' %}${% elif s == 'USDT' %}T{% elif s == 'BNB' %}B{% elif s == 'XRP' %}X{% elif s == 'DOGE' %}Ð{% else %}{{ s[:2] }}{% endif %}
   </span>
 {% endmacro %}
 
 {% block content %}
+{% set wallet = (wallets|selectattr('symbol','equalto',coin.symbol)|list|first) or {'balance_qty': 0, 'balance_eur': 0, 'address': ''} %}
 
-<button class="bc-back" onclick="history.length > 1 ? history.back() : location.href='{{ url_for('wallet_assets') }}'">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M15 18l-6-6 6-6"/></svg>
-  Zurück
-</button>
-
-<div class="bc-coin-head" style="margin-top:14px;">
-  {{ coin_icon(coin.symbol) }}
-  <div>
-    <div class="bc-coin-head__name">{{ coin.name }}</div>
-    <div class="bc-coin-head__sub">{{ coin.symbol }}</div>
-  </div>
-</div>
-
-<div class="bc-tabs--underlined">
-  <button class="bc-tab is-active">Kaufen</button>
-  <button class="bc-tab">Verkaufen</button>
-  <button class="bc-tab">Tausch</button>
-  <button class="bc-tab">Senden</button>
-  <button class="bc-tab">Überblick</button>
-  <button class="bc-tab">Transaktionen</button>
-  <button class="bc-tab">Info</button>
-</div>
-
-<div class="bc-card bc-chart-card">
-  <div class="bc-chart-meta">
-    <div class="bc-chart-meta__label">Aktueller Preis</div>
-    {% set price = coin.price_eur or 0 %}
-    {% if price < 1 %}
-      {% set price_str = price|money %}
-    {% else %}
-      {% set price_str = price|money %}
-    {% endif %}
-    <div class="bc-chart-meta__price bc-amount" data-bc-balance="{{ price|eur }}">
-      {{ price|eur }}
+<div class="bc-shell">
+  <aside class="bc-side">
+    <div class="bc-side__card">
+      <a class="bc-side__link {% if request.path == '/wallet/home' %}active{% endif %}" href="{{ url_for('wallet_home') }}">Startseite</a>
+      <a class="bc-side__link active" href="{{ url_for('wallet_assets') }}">Vermögenswerte</a>
+      <a class="bc-side__link" href="{{ url_for('wallet_dex') }}">DEX</a>
+      <a class="bc-side__link" href="{{ url_for('wallet_stocks') }}">Aktien</a>
+      <a class="bc-side__link" href="{{ url_for('wallet_activity') }}">Aktivität</a>
     </div>
-    {% set chg = coin.change_24h_pct or 0 %}
-    <div class="bc-chart-meta__delta {% if chg < 0 %}is-down{% endif %}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        {% if chg >= 0 %}<path d="M12 19V5M5 12l7-7 7 7"/>{% else %}<path d="M12 5v14M5 12l7 7 7-7"/>{% endif %}
-      </svg>
-      {{ chg|pct }}
-      <span style="color:var(--bc-text-muted);font-weight:400;margin-left:6px;">Letzte 24h</span>
+  </aside>
+
+  <main class="bc-main bc-currency">
+    <a class="bc-back" href="{{ url_for('wallet_assets') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M15 18l-6-6 6-6"/></svg>
+      Vermögenswerte
+    </a>
+
+    <header class="bc-coin-head">
+      {{ coin_icon(coin.symbol) }}
+      <div class="bc-coin-head__main">
+        <div class="bc-coin-head__name">{{ coin.name }}</div>
+        <div class="bc-coin-head__sub">{{ coin.symbol }} &middot; {{ coin.market_cap_eur }} Marktkapitalisierung</div>
+      </div>
+      <div class="bc-coin-head__price">
+        <div class="bc-coin-head__price-value bc-amount" data-bc-balance="{{ coin.price_eur|eur }}">{{ coin.price_eur|eur }}</div>
+        <div class="bc-coin-head__price-delta {% if coin.change_24h_pct < 0 %}is-down{% endif %}">
+          {% if coin.change_24h_pct >= 0 %}↑{% else %}↓{% endif %} {{ coin.change_24h_pct|pct }} · 24h
+        </div>
+      </div>
+    </header>
+
+    <div class="bc-tabs--underlined" role="tablist" data-bc-currency-tabs>
+      <button class="bc-tab is-active" type="button" data-bc-currency-tab="overview">Überblick</button>
+      <button class="bc-tab" type="button" data-bc-currency-tab="transaktionen">Transaktionen</button>
+      <button class="bc-tab" type="button" data-bc-currency-tab="info">Info</button>
     </div>
-  </div>
-  <svg class="bc-chart" viewBox="0 0 800 260" preserveAspectRatio="none" id="bc-chart-svg"></svg>
-  <script>
-    (function () {
-      var svg = document.getElementById('bc-chart-svg');
-      if (!svg) return;
-      var W = 800, H = 260, padY = 24;
-      // deterministic pseudo-chart that ends near the live 24h change
-      var change = {{ chg }};
-      var pts = [165,170,180,172,168,175,185,195,188,178,170,162,158,168,180,178,170,160,152,148,142,138,130,135,140,150,158,165,175,180,172,165,160,155,148,140,135,128,118,108,102,98,110,128,148,165,180,170,158,148,140,132,128,122,118,124,135,148,162,175,180,170,158,150];
-      // shift final point so the trend reflects the 24h change %
-      var last = pts[pts.length - 1];
-      var first = pts[0];
-      var trend = change >= 0 ? 1.10 : 0.90;
-      pts[pts.length - 1] = Math.max(50, Math.min(220, first * trend));
-      var max = Math.max.apply(null, pts), min = Math.min.apply(null, pts);
-      function x(i){ return i*(W-30)/(pts.length-1) + 15; }
-      function y(v){ return H-padY - ((v-min)/(max-min))*(H-padY*2); }
-      var d = pts.map(function(v,i){ return (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
-      var ns = 'http://www.w3.org/2000/svg';
-      var stroke = change >= 0 ? '#0e9f6e' : '#d63a3a';
-      var path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', d);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', stroke);
-      path.setAttribute('stroke-width', '2.5');
-      path.setAttribute('stroke-linejoin', 'round');
-      path.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(path);
-      var labels = ['11:00 PM','03:00 AM','07:00 AM','11:00 AM','03:00 PM'];
-      var step = Math.floor(pts.length/(labels.length-1));
-      labels.forEach(function(lbl, idx) {
-        var t = document.createElementNS(ns, 'text');
-        t.setAttribute('x', x(idx*step));
-        t.setAttribute('y', H-4);
-        t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('fill', '#9aa0b4');
-        t.setAttribute('font-size', '11');
-        t.setAttribute('font-family', 'Inter, sans-serif');
-        t.textContent = lbl;
-        svg.appendChild(t);
+
+    {# ---------- Overview tab (default) ---------- #}
+    <section class="bc-currency-tab" data-bc-currency-panel="overview">
+
+      <div class="bc-card bc-chart-card">
+        <div class="bc-chart-meta">
+          <div class="bc-chart-meta__label">Live-Preis</div>
+          <div class="bc-chart-meta__price bc-amount" data-bc-balance="{{ coin.price_eur|eur }}">{{ coin.price_eur|eur }}</div>
+          <div class="bc-chart-meta__delta {% if coin.change_24h_pct < 0 %}is-down{% endif %}">
+            {% if coin.change_24h_pct >= 0 %}↑{% else %}↓{% endif %} {{ coin.change_24h_pct|pct }} · Letzte 24h
+          </div>
+        </div>
+        <svg class="bc-chart" viewBox="0 0 800 260" preserveAspectRatio="none" id="bc-chart-svg"></svg>
+        <script>
+          (function () {
+            var svg = document.getElementById('bc-chart-svg');
+            if (!svg) return;
+            var W = 800, H = 260, padY = 24;
+            var change = {{ coin.change_24h_pct or 0 }};
+            var pts = [165,170,180,172,168,175,185,195,188,178,170,162,158,168,180,178,170,160,152,148,142,138,130,135,140,150,158,165,175,180,172,165,160,155,148,140,135,128,118,108,102,98,110,128,148,165,180,170,158,148,140,132,128,122,118,124,135,148,162,175,180,170,158,150];
+            var first = pts[0];
+            var trend = change >= 0 ? 1.10 : 0.90;
+            pts[pts.length - 1] = Math.max(50, Math.min(220, first * trend));
+            var max = Math.max.apply(null, pts), min = Math.min.apply(null, pts);
+            function x(i){ return i*(W-30)/(pts.length-1) + 15; }
+            function y(v){ return H-padY - ((v-min)/(max-min))*(H-padY*2); }
+            var d = pts.map(function(v,i){ return (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
+            var ns = 'http://www.w3.org/2000/svg';
+            var stroke = change >= 0 ? '#0e9f6e' : '#d63a3a';
+            var path = document.createElementNS(ns, 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', stroke);
+            path.setAttribute('stroke-width', '2.5');
+            path.setAttribute('stroke-linejoin', 'round');
+            path.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(path);
+            var labels = ['11:00 PM','03:00 AM','07:00 AM','11:00 AM','03:00 PM'];
+            var step = Math.floor(pts.length/(labels.length-1));
+            labels.forEach(function(lbl, idx) {
+              var t = document.createElementNS(ns, 'text');
+              t.setAttribute('x', x(idx*step));
+              t.setAttribute('y', H-4);
+              t.setAttribute('text-anchor', 'middle');
+              t.setAttribute('fill', '#9aa0b4');
+              t.setAttribute('font-size', '11');
+              t.setAttribute('font-family', 'Inter, sans-serif');
+              t.textContent = lbl;
+              svg.appendChild(t);
+            });
+          })();
+        </script>
+      </div>
+
+      <div class="bc-balance-actions">
+        <div class="bc-balance">
+          <div class="bc-balance__label">Ihr Gesamtbestand</div>
+          {% set eur_value = (wallet.balance_qty or 0) * (coin.price_eur or 0) %}
+          <div class="bc-balance__amount bc-amount" data-bc-balance="{{ eur_value|eur }}" data-bc-wallet-symbol="{{ coin.symbol }}">{{ eur_value|eur }}</div>
+          <div class="bc-balance__sub">{{ wallet.balance_qty|qty(4) }} {{ coin.symbol }}</div>
+          {% if wallet.address %}
+          <div class="bc-coin-address-row">
+            <div class="bc-coin-address-label">Wallet-Adresse</div>
+            <div class="bc-coin-address" data-bc-addr title="Zum Kopieren klicken">{{ wallet.address }}</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="bc-actions bc-actions--currency">
+          <a class="bc-action" href="{{ url_for('wallet_buy', sym=coin.symbol) }}">
+            <span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            <span class="bc-action__label">Kaufen</span>
+          </a>
+          <a class="bc-action" href="{{ url_for('wallet_sell', sym=coin.symbol) }}">
+            <span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
+            <span class="bc-action__label">Verkaufen</span>
+          </a>
+          <a class="bc-action" href="{{ url_for('wallet_swap') }}">
+            <span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span>
+            <span class="bc-action__label">Tausch</span>
+          </a>
+          <button class="bc-action" type="button" data-bc-open-modal="send" data-bc-send-prefill="{{ coin.symbol }}">
+            <span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V8M6 14l6-6 6 6"/></svg></span>
+            <span class="bc-action__label">Senden</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="bc-card bc-currency-summary">
+        <h2 class="bc-currency-summary__title">Markt-Informationen</h2>
+        <div class="bc-currency-summary__grid">
+          <div class="bc-currency-summary__cell">
+            <div class="bc-currency-summary__label">Kurs</div>
+            <div class="bc-currency-summary__value bc-amount" data-bc-balance="{{ coin.price_eur|eur }}">{{ coin.price_eur|eur }}</div>
+          </div>
+          <div class="bc-currency-summary__cell">
+            <div class="bc-currency-summary__label">24h Veränderung</div>
+            <div class="bc-currency-summary__value {% if coin.change_24h_pct < 0 %}is-down{% endif %}">
+              {{ coin.change_24h_pct|pct }}
+            </div>
+          </div>
+          <div class="bc-currency-summary__cell">
+            <div class="bc-currency-summary__label">Marktkapitalisierung</div>
+            <div class="bc-currency-summary__value">€{{ coin.market_cap_eur }}</div>
+          </div>
+          <div class="bc-currency-summary__cell">
+            <div class="bc-currency-summary__label">Ihr Bestand</div>
+            <div class="bc-currency-summary__value">{{ wallet.balance_qty|qty(4) }} {{ coin.symbol }}</div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    {# ---------- Transaktionen tab ---------- #}
+    <section class="bc-currency-tab" data-bc-currency-panel="transaktionen" hidden>
+      <section class="bc-card">
+        <header class="bc-card__head">
+          <div>
+            <h2 class="bc-card__title">Transaktionen</h2>
+            <p class="bc-card__sub">Alle Aktivitäten für {{ coin.name }} ({{ coin.symbol }}).</p>
+          </div>
+          <a class="bc-btn bc-btn--ghost" href="{{ url_for('wallet_activity') }}">Alle Aktivitäten →</a>
+        </header>
+        {% set tx = (activity|selectattr('qty_unit','equalto',coin.symbol)|list) %}
+        {% if tx %}
+        <div class="bc-list">
+          {% for a in tx %}
+          <div class="bc-list__row">
+            <span class="bc-tx-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                {% if a.kind == 'send' %}<path d="M12 20V8M6 14l6-6 6 6"/>
+                {% elif a.kind == 'sell' %}<path d="M19 12H5M11 18l-6-6 6-6"/>
+                {% elif a.kind == 'buy' %}<path d="M5 12h14M13 6l6 6-6 6"/>
+                {% elif a.kind == 'swap' %}<path d="M7 7h11l-3-3M17 17H6l3 3"/>
+                {% else %}<path d="M12 5v14M5 12h14"/>{% endif %}
+              </svg>
+            </span>
+            <div class="bc-row-main">
+              <div class="bc-row-main__name">{{ a.label }}</div>
+              <div class="bc-row-main__sub">{{ (a.ts or '')[:10] or '—' }}{% if a.status == 'pending' %} · <span style="color:#f59e0b;">ausstehend</span>{% endif %}</div>
+            </div>
+            <div class="bc-row-aside">
+              <div class="bc-row-aside__amount {% if a.kind in ('sell','send') %}is-down{% else %}is-up{% endif %}">
+                {% if a.kind in ('sell','send') %}−{% else %}+{% endif %}{{ a.amount_eur|eur }}
+              </div>
+              <div class="bc-row-aside__qty">{{ a.amount_qty|qty(4) }} {{ a.qty_unit }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="bc-empty">Keine Transaktionen für {{ coin.symbol }} bisher.</div>
+        {% endif %}
+      </section>
+    </section>
+
+    {# ---------- Info tab ---------- #}
+    <section class="bc-currency-tab" data-bc-currency-panel="info" hidden>
+      <section class="bc-card">
+        <h2 class="bc-card__title">Über {{ coin.name }}</h2>
+        <p class="bc-card__sub">
+          {{ coin.name }} ({{ coin.symbol }}) ist ein Krypto-Asset, das in Ihrer DeFi-Wallet gehandelt und verwahrt wird.
+          Live-Kurs: <strong>{{ coin.price_eur|eur }}</strong>.
+          24h-Veränderung: <strong>{{ coin.change_24h_pct|pct }}</strong>.
+          Marktkapitalisierung: <strong>€{{ coin.market_cap_eur }}</strong>.
+        </p>
+        <div class="bc-info-grid">
+          <div class="bc-info-cell">
+            <div class="bc-info-cell__label">Symbol</div>
+            <div class="bc-info-cell__value">{{ coin.symbol }}</div>
+          </div>
+          <div class="bc-info-cell">
+            <div class="bc-info-cell__label">Vollständiger Name</div>
+            <div class="bc-info-cell__value">{{ coin.name }}</div>
+          </div>
+          <div class="bc-info-cell">
+            <div class="bc-info-cell__label">Netzwerk</div>
+            <div class="bc-info-cell__value">DeFi Wallet</div>
+          </div>
+          <div class="bc-info-cell">
+            <div class="bc-info-cell__label">Handel 24/7</div>
+            <div class="bc-info-cell__value">Ja</div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    // Tab switching
+    var tabs = document.querySelectorAll('[data-bc-currency-tab]');
+    var panels = document.querySelectorAll('[data-bc-currency-panel]');
+    function activate(name) {
+      tabs.forEach(function (t) { t.classList.toggle('is-active', t.dataset.bcCurrencyTab === name); });
+      panels.forEach(function (p) { p.hidden = (p.dataset.bcCurrencyPanel !== name); });
+      if (window.history && window.history.replaceState) {
+        try { window.history.replaceState({}, '', '#' + name); } catch (e) {}
+      }
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () { activate(t.dataset.bcCurrencyTab); });
+    });
+    var h = (window.location.hash || '').replace('#', '');
+    if (h && document.querySelector('[data-bc-currency-tab="' + h + '"]')) activate(h);
+
+    // Click-to-copy wallet address
+    document.querySelectorAll('[data-bc-addr]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+            el.classList.add('copied');
+            setTimeout(function () { el.classList.remove('copied'); }, 1200);
+          });
+        }
       });
-    })();
-  </script>
-</div>
+    });
 
-<div class="bc-balance-actions">
-  <div class="bc-balance">
-    <div class="bc-balance__label">Ihr Gesamtbestand {{ coin.symbol }}</div>
-    {% set eur_value = (coin.balance_qty or 0) * (coin.price_eur or 0) %}
-    <div class="bc-balance__amount bc-amount" data-bc-balance="{{ eur_value|eur }}" data-bc-wallet-symbol="{{ coin.symbol }}">{{ eur_value|eur }}</div>
-    <div style="color:var(--bc-text-muted);font-size:12px;margin-top:4px;">{{ coin.balance_qty|qty(4) }} {{ coin.qty_unit }}</div>
-    {% if coin.address %}
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bc-border);">
-      <div style="font-size:11px;color:var(--bc-text-muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px;">Wallet-Adresse</div>
-      <div class="bc-coin-address" onclick="navigator.clipboard && navigator.clipboard.writeText(this.textContent).then(function(){this.classList.add('copied');setTimeout(function(){this.classList.remove('copied')}.bind(this),1200)}.bind(this))" title="Zum Kopieren klicken">{{ coin.address }}</div>
-    </div>
-    {% endif %}
-  </div>
-  <div class="bc-actions">
-    <button class="bc-action" data-bc-open-modal="einzahlung"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6M5 20h14"/></svg></span><span class="bc-action__label">Einzahlung</span></button>
-    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span><span class="bc-action__label">Verkaufen</span></button>
-    <button class="bc-action" onclick="location.href='{{ url_for('wallet_dex') }}'"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span><span class="bc-action__label">Tausch</span></button>
-    <button class="bc-action"><span class="bc-action__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V8M6 14l6 6 6-6"/></svg></span><span class="bc-action__label">Senden</span></button>
-  </div>
-</div>
-
+    // Pre-fill the send modal with this coin (when opened from this page)
+    var prefill = document.querySelector('[data-bc-send-prefill]');
+    if (prefill) {
+      prefill.addEventListener('click', function () {
+        var sym = prefill.dataset.bcSendPrefill;
+        if (!sym) return;
+        // wait for the send modal to open, then set the picker
+        setTimeout(function () {
+          var hidden = document.getElementById('bc-send-symbol');
+          if (hidden) {
+            hidden.value = sym;
+            hidden.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, 80);
+      });
+    }
+  })();
+</script>
 {% endblock %}

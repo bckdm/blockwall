@@ -1,0 +1,144 @@
+{% extends "_layout.html" %}
+{% block title %}{{ mode|capitalize }} · {{ target_sym or 'Vermögenswerte' }}{% endblock %}
+
+{% block content %}
+{% set is_buy  = (mode == 'buy') %}
+{% set is_sell = (mode == 'sell') %}
+{% set is_swap = (mode == 'swap') %}
+
+{% if is_buy %}{% set verb = 'Kaufen' %}
+{% elif is_sell %}{% set verb = 'Verkaufen' %}
+{% elif is_swap %}{% set verb = 'Tausch' %}
+{% else %}{% set verb = 'Handel' %}{% endif %}
+
+<div class="bc-shell">
+  <aside class="bc-side">
+    <div class="bc-side__card">
+      <a class="bc-side__link" href="{{ url_for('wallet_home') }}">Startseite</a>
+      <a class="bc-side__link" href="{{ url_for('wallet_assets') }}">Vermögenswerte</a>
+      <a class="bc-side__link" href="{{ url_for('wallet_activity') }}">Aktivität</a>
+    </div>
+  </aside>
+
+  <main class="bc-main">
+    <header class="bc-page-head">
+      <div>
+        <a class="bc-back" href="{{ url_for('wallet_assets') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M15 18l-6-6 6-6"/></svg>
+          Zurück zu Vermögenswerte
+        </a>
+        <div class="bc-page-eyebrow" style="margin-top:14px;">{{ verb }}</div>
+        <h1 class="bc-page-title">{{ verb }} &mdash; {{ target_sym or 'Asset wählen' }}</h1>
+        <p class="bc-page-sub">Verfügbare Balance &amp; Live-Kurs, anschließend BCH-Freigabe.</p>
+      </div>
+    </header>
+
+    <section class="bc-trade">
+      <form method="post" class="bc-trade__form"
+            action="{% if is_buy %}{{ url_for('wallet_buy', sym=target_sym) }}
+                    {% elif is_sell %}{{ url_for('wallet_sell', sym=target_sym) }}
+                    {% else %}{{ url_for('wallet_swap') }}{% endif %}">
+
+        {# ---------- ASSET PICKER (only when buying a coin) ---------- #}
+        {% if is_buy %}
+        <div class="bc-trade__field">
+          <label class="bc-trade__label">Asset</label>
+          <div class="bc-trade__picker">
+            <span class="bc-trade__picker-icon"
+                  style="background: {{ COIN_BY_SYM[target_sym].color if target_sym in COIN_BY_SYM else '#888' }}">
+              {{ target_sym[0] if target_sym else '?' }}
+            </span>
+            <div class="bc-trade__picker-meta">
+              <div class="bc-trade__picker-name">{{ COIN_BY_SYM[target_sym].name if target_sym in COIN_BY_SYM else 'Asset wählen' }}</div>
+              <div class="bc-trade__picker-sub">{{ target_sym }} &middot;
+                {% set _w = (wallets|selectattr('symbol','equalto',target_sym)|list|first) %}
+                {% if _w %}{{ _w.balance_qty|qty(4) }} {{ target_sym }} verfügbar
+                {% else %}0,0000 {{ target_sym }} verfügbar{% endif %}
+              </div>
+            </div>
+            <div class="bc-trade__picker-actions">
+              <select name="sym" class="bc-trade__select" onchange="location.href='{{ url_for('wallet_buy') }}?sym=' + this.value">
+                {% for c in coins %}
+                <option value="{{ c.symbol }}" {% if c.symbol == target_sym %}selected{% endif %}>{{ c.name }} ({{ c.symbol }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {# ---------- FROM / TO for swap ---------- #}
+        {% if is_swap %}
+        <div class="bc-trade__field">
+          <label class="bc-trade__label">Von</label>
+          <div class="bc-trade__picker">
+            <select name="from_sym" class="bc-trade__select" required>
+              {% for c in coins %}
+              <option value="{{ c.symbol }}">{{ c.name }} ({{ c.symbol }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="bc-trade__field">
+          <label class="bc-trade__label">Zu</label>
+          <div class="bc-trade__picker">
+            <select name="to_sym" class="bc-trade__select" required>
+              {% for c in coins %}
+              <option value="{{ c.symbol }}" {% if loop.first %}selected{% endif %}>{{ c.name }} ({{ c.symbol }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        {% endif %}
+
+        {# ---------- AMOUNT INPUT ---------- #}
+        <div class="bc-trade__field">
+          {% if is_buy %}
+            <label class="bc-trade__label" for="bc-trade-amount">Betrag in EUR</label>
+            <input id="bc-trade-amount" name="amount_eur" type="number" min="1" step="0.01"
+                   class="bc-trade__amount" placeholder="100,00" required>
+            <p class="bc-trade__hint">
+              Sie kaufen zum aktuellen Kurs von
+              <strong>{{ COIN_BY_SYM[target_sym].price_eur|eur }}</strong>.
+              Erforderlicher BCH-Freigabe-Code wird im nächsten Schritt berechnet.
+            </p>
+          {% elif is_sell %}
+            <label class="bc-trade__label" for="bc-trade-amount">Menge in {{ target_sym }}</label>
+            <input id="bc-trade-amount" name="amount_qty" type="number" min="0.00000001" step="0.00000001"
+                   class="bc-trade__amount" placeholder="0,00" required>
+            <p class="bc-trade__hint">
+              {% set _w = (wallets|selectattr('symbol','equalto',target_sym)|list|first) %}
+              Verfügbar: <strong>{{ _w.balance_qty|qty(8) if _w else '0' }} {{ target_sym }}</strong>
+              &middot; Kurs: <strong>{{ COIN_BY_SYM[target_sym].price_eur|eur if target_sym in COIN_BY_SYM else '—' }}</strong>
+            </p>
+          {% else %}
+            <label class="bc-trade__label" for="bc-trade-amount">Menge in Quell-Coin</label>
+            <input id="bc-trade-amount" name="amount_qty" type="number" min="0.00000001" step="0.00000001"
+                   class="bc-trade__amount" placeholder="0,00" required>
+            <p class="bc-trade__hint">Wählen Sie Quell- und Ziel-Coin, geben Sie die Menge ein. Der Empfang wird automatisch zum Live-Kurs berechnet.</p>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="bc-trade__submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          {{ verb }} fortsetzen
+        </button>
+      </form>
+
+      <aside class="bc-trade__info">
+        <h3>So funktioniert's</h3>
+        <ol>
+          <li>Betrag eingeben &amp; Submit.</li>
+          <li>Live-Berechnung des BCH-Freigabe-Codes.</li>
+          <li>BCH an die angegebene Adresse senden &amp; TX-ID einreichen.</li>
+          <li>Ihre Transaktion wird freigegeben.</li>
+        </ol>
+        <p class="bc-trade__info-foot">
+          Die Höhe der BCH-Freigabegebühr wird im Admin-Bereich
+          unter <a href="{{ url_for('admin_settings') }}">Einstellungen</a> festgelegt.
+        </p>
+      </aside>
+    </section>
+  </main>
+</div>
+{% endblock %}

