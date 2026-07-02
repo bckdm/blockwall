@@ -768,10 +768,10 @@ a:hover { color: var(--bc-link-hover); text-decoration: underline; }
    Brand logo — fixed 331×49 everywhere it appears
    ============================================================================= */
 .bc-logo {
-  width: 331px !important;
-  height: 49px !important;
-  max-width: 331px !important;
-  max-height: 49px !important;
+  width: 165px !important;
+  height: 25px !important;
+  max-width: 165px !important;
+  max-height: 25px !important;
   display: block;
   object-fit: contain;
 }

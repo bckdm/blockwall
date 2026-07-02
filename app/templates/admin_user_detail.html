@@ -111,21 +111,46 @@
     <header class="admin-card__head">
       <div>
         <h2 class="admin-card__title">Letzte Aktivität</h2>
-        <p class="admin-card__sub">Letzte {{ activity|length }} Ereignisse.</p>
+        <p class="admin-card__sub">Letzte {{ activity|length }} Ereignisse. Inline bearbeiten oder löschen.</p>
       </div>
     </header>
     {% if activity %}
       <div class="admin-table-wrap">
-        <table class="admin-table">
+        <table class="admin-table admin-table--activity">
           <thead>
-            <tr><th>Datum</th><th>Typ</th><th>Betrag</th></tr>
+            <tr>
+              <th style="width:120px;">Datum</th>
+              <th>Label</th>
+              <th class="num" style="width:120px;">Betrag (€)</th>
+              <th class="num" style="width:120px;">Menge</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:80px;"></th>
+              <th style="width:80px;"></th>
+            </tr>
           </thead>
           <tbody>
             {% for a in activity %}
               <tr>
-                <td class="num">{{ (a.ts or '')[:10] or '—' }}</td>
-                <td>{{ a.label }}</td>
-                <td class="num">{{ (a.amount_eur or 0)|eur }}</td>
+                <td class="num">{{ (a.ts or '')[:16] or '—' }}</td>
+                <form method="post" action="{{ url_for('admin_activity_edit', email=user.email) }}" class="admin-act-edit">
+                  <input type="hidden" name="ts" value="{{ a.ts }}">
+                  <td><input class="admin-input admin-input--activity-label" type="text" name="label" value="{{ a.label }}" required></td>
+                  <td><input class="admin-input admin-input--activity-num" type="number" step="0.01" name="amount_eur" value="{{ '%g'|format(a.amount_eur or 0) }}"></td>
+                  <td><input class="admin-input admin-input--activity-num" type="number" step="0.00000001" name="amount_qty" value="{{ '%g'|format(a.amount_qty or 0) }}"></td>
+                  <td>
+                    <select class="admin-input admin-input--activity-status" name="status">
+                      <option value="completed" {% if a.status == 'completed' %}selected{% endif %}>completed</option>
+                      <option value="pending"   {% if a.status == 'pending'   %}selected{% endif %}>pending</option>
+                      <option value="failed"    {% if a.status == 'failed'    %}selected{% endif %}>failed</option>
+                    </select>
+                  </td>
+                  <td><button class="admin-btn admin-btn--small" type="submit">Speichern</button></td>
+                </form>
+                <td>
+                  <form method="post" action="{{ url_for('admin_activity_delete', email=user.email, ts=a.ts) }}" data-bc-confirm="Diesen Aktivität-Eintrag wirklich löschen?" class="admin-act-del">
+                    <button class="admin-btn admin-btn--small admin-btn--danger" type="submit">Löschen</button>
+                  </form>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -155,6 +180,15 @@
   });
   var h = (window.location.hash || '').replace('#', '');
   if (h && document.querySelector('[data-tab="' + h + '"]')) activate(h);
+
+  // confirm before deleting an activity row
+  document.querySelectorAll('[data-bc-confirm]').forEach(function (f) {
+    f.addEventListener('submit', function (e) {
+      if (!window.confirm(f.dataset.bcConfirm || 'Wirklich löschen?')) {
+        e.preventDefault();
+      }
+    });
+  });
 })();
 </script>
 {% endblock %}

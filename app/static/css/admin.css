@@ -669,3 +669,13 @@
    ──────────────────────────────────────────────────────────────────────────── */
 .muted { color: var(--adm-text-mut); }
 .admin-empty { padding: 40px; text-align: center; color: var(--adm-text-mut); }
+/* =============================================================================
+   Activity editor (admin user detail)
+   ============================================================================= */
+.admin-table--activity td { padding: 6px 10px; vertical-align: middle; }
+.admin-input--activity-label { min-width: 180px; }
+.admin-input--activity-num   { min-width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+.admin-input--activity-status { min-width: 100px; }
+.admin-act-edit { display: contents; }
+.admin-act-del  { display: inline; margin: 0; }
+.admin-act-del button { padding: 4px 10px; }

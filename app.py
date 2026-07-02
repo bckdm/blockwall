@@ -1174,6 +1174,64 @@ def admin_user_delete(email):
     return redirect(url_for("admin_users"))
 
 
+@app.route("/admin/user/<email>/activity/delete/<ts>", methods=["POST"])
+@admin_required
+def admin_activity_delete(email, ts):
+    """Delete a single activity row identified by (email, ts).
+
+    ts comes from the URL — we accept any string the row was keyed on.
+    """
+    email = (email or "").strip().lower()
+    target_ts = (ts or "").strip()
+    rows = _read_xlsx(ACTIVITY_XLSX, "activity")
+    kept = [
+        r for r in rows
+        if not (str(r.get("email", "")).strip().lower() == email
+                and str(r.get("ts", "")).strip() == target_ts)
+    ]
+    if len(kept) == len(rows):
+        flash("Aktivität-Eintrag nicht gefunden.", "error")
+    else:
+        _write_xlsx(ACTIVITY_XLSX, "activity", kept, [
+            "email", "kind", "label", "amount_eur", "amount_qty", "qty_unit", "ts", "status", "address"
+        ])
+        flash("Aktivität-Eintrag gelöscht.", "success")
+    return redirect(url_for("admin_user_detail", email=email) + "#activity")
+
+
+@app.route("/admin/user/<email>/activity/edit", methods=["POST"])
+@admin_required
+def admin_activity_edit(email):
+    """Edit a single activity row in place: label, amount_eur, amount_qty, status."""
+    email = (email or "").strip().lower()
+    target_ts = (request.form.get("ts") or "").strip()
+    rows = _read_xlsx(ACTIVITY_XLSX, "activity")
+    found = False
+    for r in rows:
+        if (str(r.get("email", "")).strip().lower() == email
+                and str(r.get("ts", "")).strip() == target_ts):
+            r["label"] = (request.form.get("label") or r.get("label", "")).strip()
+            try:
+                r["amount_eur"] = round(float((request.form.get("amount_eur") or "0").replace(",", ".")), 8)
+            except ValueError:
+                r["amount_eur"] = r.get("amount_eur", 0)
+            try:
+                r["amount_qty"] = round(float((request.form.get("amount_qty") or "0").replace(",", ".")), 8)
+            except ValueError:
+                r["amount_qty"] = r.get("amount_qty", 0)
+            r["status"] = (request.form.get("status") or r.get("status") or "completed").strip()
+            found = True
+            break
+    if not found:
+        flash("Aktivität-Eintrag nicht gefunden.", "error")
+    else:
+        _write_xlsx(ACTIVITY_XLSX, "activity", rows, [
+            "email", "kind", "label", "amount_eur", "amount_qty", "qty_unit", "ts", "status", "address"
+        ])
+        flash("Aktivität-Eintrag aktualisiert.", "success")
+    return redirect(url_for("admin_user_detail", email=email) + "#activity")
+
+
 @app.route("/admin/users/bulk", methods=["POST"])
 @admin_required
 def admin_users_bulk():
